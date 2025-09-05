@@ -1,3 +1,4 @@
+use optional_struct_recursive::Optionable;
 use optional_struct_recursive_derive::Optionable;
 
 #[test]
@@ -25,7 +26,7 @@ fn derive() {
 fn derive_generic() {
     #[derive(Optionable)]
     #[allow(dead_code)]
-    struct DeriveExample<T, T2> {
+    struct DeriveExample<T: Optionable, T2: Optionable> {
         name: T,
         surname: T2,
     }
@@ -37,5 +38,41 @@ fn derive_generic() {
     let _ = DeriveExampleOpt::<i32, String> {
         name: Some(2),
         surname: Some("b".to_owned()),
+    };
+}
+
+#[test]
+/// Check that the derive macro works with nested structs
+fn derive_nested() {
+    #[derive(Optionable)]
+    #[allow(dead_code)]
+    struct DeriveExample {
+        name: String,
+        address: Address,
+    }
+    #[derive(Optionable)]
+    #[allow(dead_code)]
+    struct Address {
+        street_name: String,
+        number: u8,
+    }
+
+    let _ = DeriveExampleOpt {
+        name: None,
+        address: None,
+    };
+    let _ = DeriveExampleOpt {
+        name: Some("a".to_owned()),
+        address: Some(AddressOpt {
+            street_name: None,
+            number: None,
+        }),
+    };
+    let _ = DeriveExampleOpt {
+        name: Some("a".to_owned()),
+        address: Some(AddressOpt {
+            street_name: Some("B".to_owned()),
+            number: Some(2),
+        }),
     };
 }

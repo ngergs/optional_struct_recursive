@@ -17,17 +17,20 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 .named
                 .into_iter()
                 .map(|f| (f.ident, f.ty))
-                .map(|(ident, ty)| quote! {#ident: Option<#ty>,});
+                .map(|(ident, ty)| quote! {#ident: Option<<#ty as  optional_struct_recursive::Optionable>::Optioned>,});
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
             Ok(quote! {
+                #[automatically_derived]
                 struct  #struct_name_opt #impl_generics #where_clause {
                     #(#fields)*
                 }
 
+                #[automatically_derived]
                 impl #impl_generics optional_struct_recursive::Optionable for #struct_name #ty_generics #where_clause {
                     type Optioned = #struct_name_opt #ty_generics;
                 }
 
+                #[automatically_derived]
                 impl #impl_generics optional_struct_recursive::Optionable for #struct_name_opt #ty_generics #where_clause {
                     type Optioned = #struct_name_opt #ty_generics;
                 }
@@ -62,15 +65,18 @@ mod tests {
                     surname: String,
                 }},
                 output: quote! {
+                    #[automatically_derived]
                     struct DeriveExampleOpt {
-                        name: Option<String>,
-                        surname: Option<String>,
+                        name: Option<<String as optional_struct_recursive::Optionable>::Optioned>,
+                        surname: Option<<String as optional_struct_recursive::Optionable>::Optioned>,
                     }
 
+                    #[automatically_derived]
                     impl optional_struct_recursive::Optionable for DeriveExample {
                         type Optioned = DeriveExampleOpt;
                     }
 
+                    #[automatically_derived]
                     impl optional_struct_recursive::Optionable for DeriveExampleOpt {
                         type Optioned = DeriveExampleOpt;
                     }
@@ -84,15 +90,18 @@ mod tests {
                     input: T2,
                 }},
                 output: quote! {
+                    #[automatically_derived]
                     struct DeriveExampleOpt<T, T2: Serialize> where T: DeserializeOwned {
-                        output: Option<T>,
-                        input: Option<T2>,
+                        output: Option<<T as optional_struct_recursive::Optionable>::Optioned>,
+                        input: Option<<T2 as optional_struct_recursive::Optionable>::Optioned>,
                     }
 
+                    #[automatically_derived]
                     impl<T, T2: Serialize> optional_struct_recursive::Optionable for DeriveExample<T, T2> where T: DeserializeOwned{
                         type Optioned = DeriveExampleOpt<T,T2>;
                     }
 
+                    #[automatically_derived]
                     impl<T, T2: Serialize> optional_struct_recursive::Optionable for DeriveExampleOpt<T, T2> where T: DeserializeOwned{
                         type Optioned = DeriveExampleOpt<T,T2>;
                     }
