@@ -1,0 +1,12 @@
+[workspace]
+resolver = "3"
+members = ["optional_struct_recursive", "optional_struct_recursive_derive"]
+
+[patch.crates-io]
+optional_struct_recursive_derive = { path = "optional_struct_recursive_derive" }
+
+# see https://github.com/johnthagen/min-sized-rust
+[profile.release]
+strip = true
+lto = true
+codegen-units = 1

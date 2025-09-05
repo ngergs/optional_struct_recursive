@@ -1,0 +1,20 @@
+[package]
+name = "optional_struct_recursive_derive"
+version = "0.1.0"
+edition = "2024"
+description = "todo"
+repository = "https://github.com/ngergs/optional-struct-recursive"
+license = "MIT"
+readme = "README.md"
+publish = false
+
+[lints.clippy]
+pedantic = "warn"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "1.0.40"
+syn = { version = "2.0.106", features = ["default", "full", "derive"] }
+proc-macro2 = "1.0.101"

@@ -1,0 +1,15 @@
+[package]
+name = "optional_struct_recursive"
+version = "0.1.0"
+edition = "2024"
+description = "todo"
+repository = "https://github.com/ngergs/optional-struct-recursive"
+license = "MIT"
+readme = "README.md"
+publish = false
+
+[lints.clippy]
+pedantic = "warn"
+
+[dependencies]
+optional_struct_recursive_derive = "0.1.0"
