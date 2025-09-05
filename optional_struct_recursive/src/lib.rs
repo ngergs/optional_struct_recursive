@@ -9,11 +9,11 @@ use std::sync::{Arc, Mutex};
 /// Hence, for types without Optioned structure like `i32` the `Optioned` type will resolve to itself,
 /// as e.g. `Option<i32>` already expresses the needed granularity.
 pub trait Optionable {
-    type Optioned: Optionable;
+    type Optioned;
 }
 
 // Blanket implementation for references to `Optionalable` types.
-impl<'a, T: Optionable + ?Sized> Optionable for &'a T {
+impl<'a, T: Optionable> Optionable for &'a T {
     type Optioned = &'a T::Optioned;
 }
 
