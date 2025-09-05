@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
@@ -43,7 +44,7 @@ macro_rules! impl_container {
     };
 }
 
-impl_container!(Vec, Box, Rc, Arc, Mutex);
+impl_container!(Vec, Box, Rc, Arc, RefCell, Mutex);
 
 #[cfg(test)]
 mod tests {
