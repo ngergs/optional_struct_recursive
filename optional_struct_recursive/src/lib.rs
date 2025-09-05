@@ -3,10 +3,10 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 /// Marker trait that signals that this struct has a corresponding type where all potential
-/// Optioned fields are optional.
+/// inner fields are optional.
 /// In detail this means that an `Option<T::Optioned>` should allow for every combination
 /// of itself being set as well as just partial subfields of itself being set.
-/// Hence, for types without Optioned structure like `i32` the `Optioned` type will resolve to itself,
+/// Hence, for types without inner structure like `i32` the `Optioned` type will resolve to itself,
 /// as e.g. `Option<i32>` already expresses the needed granularity.
 pub trait Optionable {
     type Optioned;
@@ -17,8 +17,8 @@ impl<'a, T: Optionable> Optionable for &'a T {
     type Optioned = &'a T::Optioned;
 }
 
-/// Helper macro to generate an impl for `Optionalable` where the `Optional` type
-/// resolves to itself for types without Optioned structure like primitives (e.g. `i32`).
+/// Helper macro to generate an impl for `Optionalable` where the `Optioned` type
+/// resolves to itself for types without inner structure like primitives (e.g. `i32`).
 macro_rules! impl_optional_self {
     ($($t:ty),* $(,)?) => {
         $(impl Optionable for $t{
@@ -28,14 +28,14 @@ macro_rules! impl_optional_self {
 }
 
 impl_optional_self!(
-    // Rust primitives don't have Optioned structure, https://doc.rust-lang.org/rust-by-example/primitives.html
+    // Rust primitives don't have inner structure, https://doc.rust-lang.org/rust-by-example/primitives.html
     i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, char, bool,
-    // Other types without Optioned structure
+    // Other types without inner structure
     String,
 );
 
 /// Helper macro to generate an impl for `Optionable` for Containers.
-/// Containers can be made optional be getting a container over the corresponding associated optional type.
+/// Containers can be made optional by getting a corresponding container over the associated optional type.
 macro_rules! impl_container {
     ($($t:ident),* $(,)?) => {
         $(impl<T: Optionable> Optionable for $t<T>{
