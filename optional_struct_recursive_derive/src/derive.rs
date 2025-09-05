@@ -36,10 +36,10 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 }
             })
         } else {
-            error("#derive[Optional] only supports structs with named fields")
+            error("#[derive(Optionable)] only supports structs with named fields")
         }
     } else {
-        error("#derive[Optional] only supports structs with named fields")
+        error("#[derive(Optionable)] only supports structs with named fields")
     }
 }
 
