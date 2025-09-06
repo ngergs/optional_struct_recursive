@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
@@ -44,11 +45,29 @@ macro_rules! impl_container {
     };
 }
 
-impl_container!(Vec, Box, Rc, Arc, RefCell, Mutex);
+impl_container!(
+    // Collections without an extra key, https://doc.rust-lang.org/std/collections/index.html
+    Vec, VecDeque, LinkedList, HashSet, BTreeSet, BinaryHeap,
+    // Smart pointer and sync-container
+    Box, Rc, Arc, RefCell, Mutex
+);
+
+/// Helper macro to generate an impl for `Optionable` for Maps.
+/// Maps can be made optional by getting a corresponding map over the associated optional type.
+macro_rules! impl_map {
+    ($($t:ident),* $(,)?) => {
+        $(impl<K,T: Optionable> Optionable for $t<K,T>{
+            type Optioned = $t<K,T::Optioned>;
+        })*
+    };
+}
+
+impl_map!(HashMap, BTreeMap,);
 
 #[cfg(test)]
 mod tests {
     use crate::Optionable;
+    use std::collections::{BTreeMap, HashMap};
 
     #[test]
     /// Check that an exemplary primitive type like `i32` resolves to itself as `Optioned` type.
@@ -61,9 +80,19 @@ mod tests {
     }
 
     #[test]
-    /// Check that `Vec` implements optionable.
+    /// Check that `Vec` implements optionable as an example container.
     fn container() {
         let a = vec![1, 2, 3];
         let _: <Vec<i64> as Optionable>::Optioned = a;
+    }
+
+    #[test]
+    /// Check that `HashMap` and `BTreeMap` implements optionable.
+    fn map() {
+        let a = HashMap::from([(1, "a".to_owned())]);
+        let _: <HashMap<i32, String> as Optionable>::Optioned = a;
+
+        let a = BTreeMap::from([(1, "a".to_owned())]);
+        let _: <BTreeMap<i32, String> as Optionable>::Optioned = a;
     }
 }
