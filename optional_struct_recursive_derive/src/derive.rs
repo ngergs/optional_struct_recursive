@@ -2,6 +2,8 @@ use crate::error;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
 use std::default::Default;
+use syn::punctuated::Punctuated;
+use syn::token::Where;
 use syn::{
     parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Type, TypePath, WhereClause,
     WherePredicate,
@@ -37,7 +39,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
             let unnamed_struct_semicolon = (if let Fields::Unnamed(_) = &s.fields {
                 quote! {;}
             } else {
-                quote!{}
+                quote! {}
             })
             .to_token_stream();
             let fields = optioned_fields(s.fields);
@@ -67,11 +69,8 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 #impls
             ))
         }
-        Data::Union(_) => {
-            return error("#[derive(Optionable) not supported for unit structs");
-        }
+        Data::Union(_) => error("#[derive(Optionable) not supported for unit structs"),
     }
-    .into()
 }
 
 /// Returns a tokenstream for the fields of the optioned object (struct/enum variants).
@@ -107,15 +106,15 @@ fn optioned_fields(fields: Fields) -> TokenStream {
 /// Adjusts the where clause to add the `Optionable` type bounds.
 /// Basically the original where clause with a type bound to `Optionable` added
 /// for every generic type parameter.
-fn patch_where_clause_bounds(generics: &mut Generics) -> () {
+fn patch_where_clause_bounds(generics: &mut Generics) {
     let where_clause = generics.where_clause.get_or_insert_with(|| WhereClause {
-        where_token: Default::default(),
-        predicates: Default::default(),
+        where_token: Where::default(),
+        predicates: Punctuated::default(),
     });
     generics.params.iter().for_each(|param| {
         if let GenericParam::Type(type_param) = param {
             let ident = &type_param.ident;
-            for pred in where_clause.predicates.iter_mut() {
+            for pred in &mut where_clause.predicates {
                 if let WherePredicate::Type(pred_ty) = pred
                     && let Type::Path(TypePath { qself: None, path }) = &pred_ty.bounded_ty
                     && path.is_ident(ident)
@@ -147,6 +146,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::too_many_lines)]
     fn test_optionable() {
         let tcs = vec![
             // named struct fields
@@ -266,7 +266,7 @@ mod tests {
         ];
         for tc in tcs {
             let output = derive_optionable(tc.input).unwrap();
-            println!("{}", output.to_string());
+            println!("{output}");
             assert_eq!(tc.output.to_string(), output.to_string());
         }
     }

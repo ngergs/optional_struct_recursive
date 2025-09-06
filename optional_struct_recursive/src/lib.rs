@@ -54,22 +54,21 @@ macro_rules! impl_container {
 
 impl_container!(
     // Collections without an extra key, https://doc.rust-lang.org/std/collections/index.html
-    Vec, VecDeque, LinkedList, HashSet, BTreeSet, BinaryHeap,
-    // Smart pointer and sync-container
+    Vec, VecDeque, LinkedList, BTreeSet, BinaryHeap, // Smart pointer and sync-container
     Box, Rc, Arc, RefCell, Mutex,
 );
 
-/// Helper macro to generate an impl for `Optionable` for Maps.
-/// Maps can be made optional by getting a corresponding map over the associated optional type.
-macro_rules! impl_map {
-    ($($t:ident),* $(,)?) => {
-        $(impl<K,T: Optionable> Optionable for $t<K,T>{
-            type Optioned = $t<K,T::Optioned>;
-        })*
-    };
+impl<T: Optionable, S> Optionable for HashSet<T, S> {
+    type Optioned = HashSet<T::Optioned, S>;
 }
 
-impl_map!(HashMap, BTreeMap,);
+impl<K, T: Optionable> Optionable for BTreeMap<K, T> {
+    type Optioned = BTreeMap<K, T::Optioned>;
+}
+
+impl<K, T: Optionable, S> Optionable for HashMap<K, T, S> {
+    type Optioned = HashMap<K, T::Optioned, S>;
+}
 
 #[cfg(test)]
 mod tests {
@@ -80,6 +79,7 @@ mod tests {
     fn option() {
         let a: Option<i32> = Some(10);
         // check that the 'inner' `Option` is removed, for reasoning see impl doc for `Option`.
+        #[allow(clippy::unnecessary_literal_unwrap)]
         let _: <Option<i32> as Optionable>::Optioned = a.unwrap();
     }
 
