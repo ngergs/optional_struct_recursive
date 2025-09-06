@@ -1,6 +1,6 @@
 use crate::error;
 use proc_macro2::{Ident, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use std::default::Default;
 use syn::{
     parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Type, TypePath, WhereClause,
@@ -12,51 +12,95 @@ use syn::{
 /// todo: expand to e.g. enums
 pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> {
     let mut input = syn::parse2::<DeriveInput>(input)?;
+    let type_ident_opt = Ident::new(&(input.ident.to_string() + "Opt"), input.ident.span());
+    let type_ident = &input.ident;
     patch_where_clause_bounds(&mut input.generics);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    if let Data::Struct(s) = input.data {
-        let struct_name_opt = Ident::new(&(input.ident.to_string() + "Opt"), input.ident.span());
-        let struct_name = &input.ident;
-        let struct_fields = match s.fields {
-            Fields::Named(f) => {
-                let fields=f
-                    .named
-                    .into_iter()
-                    .map(|f| (f.ident, f.ty))
-                    .map(|(ident, ty)| quote! {#ident: Option<<#ty as  optional_struct_recursive::Optionable>::Optioned>,})
-                    .collect::<Vec<_>>();
-                quote!({
-                    #(#fields)*
+    // the impl statements are actually independent of deriving
+    // the relevant associated type #type_ident_opt referenced by them
+    let impls = quote! {
+        #[automatically_derived]
+        impl #impl_generics optional_struct_recursive::Optionable for #type_ident #ty_generics #where_clause {
+            type Optioned = #type_ident_opt #ty_generics;
+        }
+
+        #[automatically_derived]
+        impl #impl_generics optional_struct_recursive::Optionable for #type_ident_opt #ty_generics #where_clause {
+            type Optioned = #type_ident_opt #ty_generics;
+        }
+    };
+
+    // now we have to derive the actual implementation of #type_ident_opt
+    // and add the #impl from above
+    match input.data {
+        Data::Struct(s) => {
+            let unnamed_struct_semicolon = (if let Fields::Unnamed(_) = &s.fields {
+                quote! {;}
+            } else {
+                quote!{}
+            })
+            .to_token_stream();
+            let fields = optioned_fields(s.fields);
+
+            Ok(quote! {
+                #[automatically_derived]
+                struct #type_ident_opt #impl_generics #where_clause #fields #unnamed_struct_semicolon
+
+                #impls
+            })
+        }
+        Data::Enum(e) => {
+            let variants = e
+                .variants
+                .into_iter()
+                .map(|v| {
+                    let ident = v.ident;
+                    let fields = optioned_fields(v.fields);
+                    quote!( #ident #fields )
                 })
-            }
-            Fields::Unnamed(f) => {
-                let fields=f
-                    .unnamed
-                    .into_iter()
-                    .map(|f| quote! {Option<<#f as  optional_struct_recursive::Optionable>::Optioned>,})
-                    .collect::<Vec<_>>();
-                quote!((
-                    #(#fields)*
-                );)
-            }
-            Fields::Unit => return error("#[derive(Optionable) not supported for unit structs"),
-        };
-        Ok(quote! {
-            #[automatically_derived]
-            struct  #struct_name_opt #impl_generics #where_clause #struct_fields
+                .collect::<Vec<_>>();
+            Ok(quote!(
+                #[automatically_derived]
+                enum #type_ident_opt #impl_generics #where_clause {
+                    #(#variants),*
+                }
+                #impls
+            ))
+        }
+        Data::Union(_) => {
+            return error("#[derive(Optionable) not supported for unit structs");
+        }
+    }
+    .into()
+}
 
-            #[automatically_derived]
-            impl #impl_generics optional_struct_recursive::Optionable for #struct_name #ty_generics #where_clause {
-                type Optioned = #struct_name_opt #ty_generics;
-            }
-
-            #[automatically_derived]
-            impl #impl_generics optional_struct_recursive::Optionable for #struct_name_opt #ty_generics #where_clause {
-                type Optioned = #struct_name_opt #ty_generics;
-            }
-        })
-    } else {
-        error("#[derive(Optionable)] only supports structs")
+/// Returns a tokenstream for the fields of the optioned object (struct/enum variants).
+/// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
+/// Does not include any leading `struct/enum` keywords or any trailing `;`.
+fn optioned_fields(fields: Fields) -> TokenStream {
+    match fields {
+        Fields::Named(f) => {
+            let fields = f
+                .named
+                .into_iter()
+                .map(|f| (f.ident, f.ty))
+                .map(|(ident, ty)| quote! {#ident: Option<<#ty as  optional_struct_recursive::Optionable>::Optioned>})
+                .collect::<Vec<_>>();
+            quote!({
+                #(#fields),*
+            })
+        }
+        Fields::Unnamed(f) => {
+            let fields = f
+                .unnamed
+                .into_iter()
+                .map(|f| quote! {Option<<#f as  optional_struct_recursive::Optionable>::Optioned>})
+                .collect::<Vec<_>>();
+            quote!((
+                #(#fields),*
+            ))
+        }
+        Fields::Unit => quote!(),
     }
 }
 
@@ -118,7 +162,7 @@ mod tests {
                     #[automatically_derived]
                     struct DeriveExampleOpt {
                         name: Option<<String as optional_struct_recursive::Optionable>::Optioned>,
-                        surname: Option<<String as optional_struct_recursive::Optionable>::Optioned>,
+                        surname: Option<<String as optional_struct_recursive::Optionable>::Optioned>
                     }
 
                     #[automatically_derived]
@@ -142,7 +186,7 @@ mod tests {
                     #[automatically_derived]
                     struct DeriveExampleOpt(
                         Option<<String as optional_struct_recursive::Optionable>::Optioned>,
-                        Option<<i32 as optional_struct_recursive::Optionable>::Optioned>,
+                        Option<<i32 as optional_struct_recursive::Optionable>::Optioned>
                     );
 
                     #[automatically_derived]
@@ -171,7 +215,7 @@ mod tests {
                         where T: DeserializeOwned + optional_struct_recursive::Optionable,
                               T2: optional_struct_recursive::Optionable {
                         output: Option<<T as optional_struct_recursive::Optionable>::Optioned>,
-                        input: Option<<T2 as optional_struct_recursive::Optionable>::Optioned>,
+                        input: Option<<T2 as optional_struct_recursive::Optionable>::Optioned>
                     }
 
                     #[automatically_derived]
@@ -186,6 +230,36 @@ mod tests {
                         where T: DeserializeOwned + optional_struct_recursive::Optionable,
                               T2: optional_struct_recursive::Optionable  {
                         type Optioned = DeriveExampleOpt<T,T2>;
+                    }
+                },
+            },
+            TestCase {
+                input: quote! {
+                    #[derive(Optionable)]
+                    enum DeriveExample {
+                        Unit,
+                        Plain(String),
+                        Address{street: String, number: u32},
+                        Address2(String,u32),
+                    }
+                },
+                output: quote! {
+                    # [automatically_derived]
+                    enum DeriveExampleOpt {
+                        Unit,
+                        Plain( Option<<String as optional_struct_recursive::Optionable>::Optioned> ),
+                        Address{ street: Option<< String as optional_struct_recursive::Optionable>::Optioned>, number:Option<<u32 as optional_struct_recursive::Optionable>::Optioned> },
+                        Address2( Option<<String as optional_struct_recursive::Optionable>::Optioned>, Option<<u32 as optional_struct_recursive::Optionable>::Optioned> )
+                    }
+
+                    #[automatically_derived]
+                    impl optional_struct_recursive::Optionable for DeriveExample {
+                        type Optioned = DeriveExampleOpt;
+                    }
+
+                    #[automatically_derived]
+                    impl optional_struct_recursive::Optionable for DeriveExampleOpt {
+                        type Optioned = DeriveExampleOpt;
                     }
                 },
             },

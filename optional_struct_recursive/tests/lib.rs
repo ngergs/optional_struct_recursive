@@ -86,3 +86,33 @@ fn derive_nested() {
         }),
     };
 }
+
+#[test]
+/// Check that the derive macro works for enums
+fn derive_enum() {
+    #[derive(Optionable)]
+    #[allow(dead_code)]
+    enum DeriveExample {
+        Unit,
+        Plain(String),
+        Address { street: String, number: u32 },
+        Address2(String, u32),
+    }
+
+    // unit does not get optioned as it has no inner structure
+    let _ = DeriveExampleOpt::Unit;
+
+    let _ = DeriveExampleOpt::Plain(None);
+    let _ = DeriveExampleOpt::Address {
+        street: None,
+        number: None,
+    };
+    let _ = DeriveExampleOpt::Address2(None, None);
+
+    let _ = DeriveExampleOpt::Plain(Some("a".to_owned()));
+    let _ = DeriveExampleOpt::Address {
+        street: Some("a".to_owned()),
+        number: Some(42),
+    };
+    let _ = DeriveExampleOpt::Address2(Some("a".to_owned()), Some(42));
+}
