@@ -2,7 +2,7 @@ use optional_struct_recursive_derive::Optionable;
 
 #[test]
 /// Check that the derive macro works.
-fn derive() {
+fn derive_named_struct() {
     #[derive(Optionable)]
     #[allow(dead_code)]
     struct DeriveExample {
@@ -18,6 +18,17 @@ fn derive() {
         name: Some("a".to_owned()),
         surname: Some("b".to_owned()),
     };
+}
+
+#[test]
+/// Check that the derive macro works.
+fn derive_unnamed_struct() {
+    #[derive(Optionable)]
+    #[allow(dead_code)]
+    struct DeriveExample(String, i32);
+
+    let _ = DeriveExampleOpt(None, None);
+    let _ = DeriveExampleOpt(Some("a".to_owned()), Some(42));
 }
 
 #[test]
