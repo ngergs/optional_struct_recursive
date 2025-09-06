@@ -1,4 +1,3 @@
-use optional_struct_recursive::Optionable;
 use optional_struct_recursive_derive::Optionable;
 
 #[test]
@@ -26,7 +25,7 @@ fn derive() {
 fn derive_generic() {
     #[derive(Optionable)]
     #[allow(dead_code)]
-    struct DeriveExample<T: Optionable, T2: Optionable> {
+    struct DeriveExample<T, T2> {
         name: T,
         surname: T2,
     }
