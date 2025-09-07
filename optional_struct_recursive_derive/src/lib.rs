@@ -3,7 +3,7 @@ use std::fmt;
 mod derive;
 
 /// Derives the `Optionable` trait.
-#[proc_macro_derive(Optionable)]
+#[proc_macro_derive(Optionable, attributes(optionable))]
 pub fn derive_optionable(input: TokenStream) -> TokenStream {
     derive::derive_optionable(input.into())
         .unwrap_or_else(syn::Error::into_compile_error)

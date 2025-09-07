@@ -5,9 +5,15 @@ use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::token::Where;
 use syn::{
-    parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Type, TypePath, WhereClause,
-    WherePredicate,
+    parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Type, TypePath,
+    WhereClause, WherePredicate,
 };
+
+const HELPER_IDENT: &str = "optionable";
+const ERR_MSG_HELPER_ATTR_FIELD: &str =
+    "#[optionable] helper attributes not supported on field level.";
+const ERR_MSG_HELPER_ATTR_ENUM_VARIANTS: &str =
+    "#[optionable] helper attributes not supported on enum variant level.";
 
 /// Derives the `Optionable`-trait from the main `optional_struct_recursive`-library.
 /// Limited to structs atm.
@@ -36,6 +42,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
     // and add the #impl from above
     match input.data {
         Data::Struct(s) => {
+            error_on_field_helper_attributes(&s.fields, ERR_MSG_HELPER_ATTR_FIELD)?;
             let unnamed_struct_semicolon = (if let Fields::Unnamed(_) = &s.fields {
                 quote! {;}
             } else {
@@ -56,10 +63,14 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 .variants
                 .into_iter()
                 .map(|v| {
-                    let ident = v.ident;
+                    error_on_helper_attributes(&v.attrs, ERR_MSG_HELPER_ATTR_ENUM_VARIANTS)?;
+                    error_on_field_helper_attributes(&v.fields, ERR_MSG_HELPER_ATTR_FIELD)?;
                     let fields = optioned_fields(v.fields);
-                    quote!( #ident #fields )
+                    Ok::<_, syn::Error>((v.ident, fields))
                 })
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .map(|(ident, fields)| quote!( #ident #fields ))
                 .collect::<Vec<_>>();
             Ok(quote!(
                 #[automatically_derived]
@@ -69,7 +80,36 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 #impls
             ))
         }
-        Data::Union(_) => error("#[derive(Optionable) not supported for unit structs"),
+        Data::Union(_) => error("#[derive(Optionable)] not supported for unit structs"),
+    }
+}
+
+/// Goes through all fields and all corresponding field attributes,
+/// filters for our [`HELPER_IDENT`] helper-attribute identifier
+/// and reports an error if anything is found.
+fn error_on_field_helper_attributes(fields: &Fields, err_msg: &'static str) -> syn::Result<()> {
+    fields
+        .iter()
+        .map(|f| error_on_helper_attributes(&f.attrs, err_msg))
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(())
+}
+
+/// Goes through the attributes, filters for our [`HELPER_IDENT`] helper-attribute identifier
+/// and reports an error if anything is found.
+fn error_on_helper_attributes(attrs: &[Attribute], err_msg: &'static str) -> syn::Result<()> {
+    if attrs
+        .iter()
+        .filter(|attr| {
+            println!("{}", attr.path().to_token_stream());
+            attr.path().is_ident(HELPER_IDENT)
+        })
+        .collect::<Vec<_>>()
+        .is_empty()
+    {
+        Ok(())
+    } else {
+        error(err_msg)
     }
 }
 
