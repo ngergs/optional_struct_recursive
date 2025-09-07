@@ -4,6 +4,10 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "chrono")]
+mod chrono;
+#[cfg(feature = "serde_json")]
+mod serde_json;
 
 /// Marker trait that signals that this struct has a corresponding type where all potential
 /// inner fields are optional.
@@ -36,6 +40,7 @@ macro_rules! impl_optional_self {
         })*
     };
 }
+pub(crate) use impl_optional_self;
 
 impl_optional_self!(
     // Rust primitives don't have inner structure, https://doc.rust-lang.org/rust-by-example/primitives.html
