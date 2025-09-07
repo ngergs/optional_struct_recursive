@@ -3,6 +3,7 @@ use darling::util::PathList;
 use darling::FromDeriveInput;
 use proc_macro2::{Ident, TokenStream};
 use quote::{quote, ToTokens};
+use std::borrow::Cow;
 use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::token::Where;
@@ -22,6 +23,7 @@ const ERR_MSG_HELPER_ATTR_ENUM_VARIANTS: &str =
 /// Helper attributes on the type definition level (attached to the `struct` or `enum` itself).
 struct TypeHelperAttributes {
     derive: Option<PathList>,
+    suffix: Option<Ident>,
 }
 
 /// Derives the `Optionable`-trait from the main `optional_struct_recursive`-library.
@@ -29,9 +31,12 @@ struct TypeHelperAttributes {
 /// todo: expand to e.g. enums
 pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> {
     let mut input = syn::parse2::<DeriveInput>(input)?;
-    let type_ident_opt = Ident::new(&(input.ident.to_string() + "Opt"), input.ident.span());
-    let type_ident = &input.ident;
     let attrs = TypeHelperAttributes::from_derive_input(&input)?;
+    let suffix = attrs.suffix.map_or(Cow::Borrowed("Opt"), |val| {
+        val.into_token_stream().to_string().into()
+    });
+    let type_ident_opt = Ident::new(&(input.ident.to_string() + &suffix), input.ident.span());
+    let type_ident = &input.ident;
 
     patch_where_clause_bounds(&mut input.generics);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -247,7 +252,7 @@ mod tests {
             TestCase {
                 input: quote! {
                     #[derive(Optionable)]
-                    #[optionable(derive(Deserialize,Serialize))]
+                    #[optionable(derive(Deserialize,Serialize),suffix="Ac")]
                     struct DeriveExample {
                         name: String,
                         surname: String,
@@ -256,19 +261,19 @@ mod tests {
                 output: quote! {
                     #[automatically_derived]
                     #[derive(Deserialize, Serialize)]
-                    struct DeriveExampleOpt {
+                    struct DeriveExampleAc {
                         name: Option<<String as ::optional_struct_recursive::Optionable>::Optioned>,
                         surname: Option<<String as ::optional_struct_recursive::Optionable>::Optioned>
                     }
 
                     #[automatically_derived]
                     impl ::optional_struct_recursive::Optionable for DeriveExample {
-                        type Optioned = DeriveExampleOpt;
+                        type Optioned = DeriveExampleAc;
                     }
 
                     #[automatically_derived]
-                    impl ::optional_struct_recursive::Optionable for DeriveExampleOpt {
-                        type Optioned = DeriveExampleOpt;
+                    impl ::optional_struct_recursive::Optionable for DeriveExampleAc {
+                        type Optioned = DeriveExampleAc;
                     }
                 },
             },
