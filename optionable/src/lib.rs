@@ -1,3 +1,5 @@
+pub use optionable_derive as derive;
+
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
 use std::rc::Rc;

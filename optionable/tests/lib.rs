@@ -1,4 +1,4 @@
-use optionable_derive::Optionable;
+use optionable::derive::Optionable;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -53,6 +53,8 @@ fn derive_generic() {
     };
 }
 
+type _String = <String as ::optionable::Optionable>::Optioned;
+
 #[test]
 /// Check that the derive macro works with nested structs
 fn derive_nested() {
@@ -60,7 +62,7 @@ fn derive_nested() {
     #[allow(dead_code)]
     struct DeriveExample {
         name: String,
-        address: Address,
+        addresses: Vec<Address>,
     }
     #[derive(Optionable)]
     #[allow(dead_code)]
@@ -71,21 +73,25 @@ fn derive_nested() {
 
     let _ = DeriveExampleOpt {
         name: None,
-        address: None,
+        addresses: None,
     };
     let _ = DeriveExampleOpt {
         name: Some("a".to_owned()),
-        address: Some(AddressOpt {
+        addresses: Some(vec![AddressOpt {
             street_name: None,
             number: None,
-        }),
+        }]),
     };
     let _ = DeriveExampleOpt {
         name: Some("a".to_owned()),
-        address: Some(AddressOpt {
+        addresses: Some(vec![AddressOpt {
             street_name: Some("B".to_owned()),
             number: Some(2),
-        }),
+        }]),
+    };
+    let _ = DeriveExampleOpt {
+        name: None,
+        addresses: None,
     };
 }
 
