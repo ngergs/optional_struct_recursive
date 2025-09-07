@@ -15,16 +15,19 @@ If you want to derive `Optionable` for a type using a struct/enum as a subfield 
 given struct/enum needs to also derive (or implement) `Optionable`:
 ```rust
 #[derive(Optionable)]
+#[optionable(derive(Serialize,Deserialize))]
 struct DeriveExample {
     name: String,
     addresses: Vec<Address>,
 }
 #[derive(Optionable)]
+#[optionable(derive(Serialize,Deserialize))]
 struct Address {
     street_name: String,
     number: u8,
 }
 ```
+
 The generated code is (shortened and simplified):
 ```rust
 struct DeriveExampleOpt {
