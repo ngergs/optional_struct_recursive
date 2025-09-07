@@ -32,7 +32,7 @@ impl<'a, T: Optionable> Optionable for &'a T {
 macro_rules! impl_optional_self {
     ($($t:ty),* $(,)?) => {
         $(impl Optionable for $t{
-            type Optioned = $t;
+            type Optioned = Self;
         })*
     };
 }
@@ -45,7 +45,7 @@ impl_optional_self!(
 );
 
 impl<'a> Optionable for &'a str {
-    type Optioned = &'a str;
+    type Optioned = Self;
 }
 
 /// Helper macro to generate an impl for `Optionable` for Containers.
