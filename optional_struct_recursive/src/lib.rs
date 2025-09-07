@@ -42,6 +42,10 @@ impl_optional_self!(
     String,
 );
 
+impl<'a> Optionable for &'a str {
+    type Optioned = &'a str;
+}
+
 /// Helper macro to generate an impl for `Optionable` for Containers.
 /// Containers can be made optional by getting a corresponding container over the associated optional type.
 macro_rules! impl_container {
@@ -91,6 +95,13 @@ mod tests {
     fn primitive_types_optioned_self() {
         let a: i32 = 10;
         let _: <i32 as Optionable>::Optioned = a;
+    }
+
+    #[test]
+    /// Check that &str implements `Optionable`.
+    fn str() {
+        let a = "hello";
+        let _: <&str as Optionable>::Optioned = a;
     }
 
     #[test]
