@@ -9,6 +9,7 @@ readme = "README.md"
 publish = false
 
 [features]
+default = []
 chrono = ["dep:chrono"]
 serde_json = ["dep:serde_json"]
 

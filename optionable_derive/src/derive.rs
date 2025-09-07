@@ -35,6 +35,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
     let suffix = attrs.suffix.map_or(Cow::Borrowed("Opt"), |val| {
         val.into_token_stream().to_string().into()
     });
+    let vis = input.vis;
     let type_ident_opt = Ident::new(&(input.ident.to_string() + &suffix), input.ident.span());
     let type_ident = &input.ident;
 
@@ -82,7 +83,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
             Ok(quote! {
                 #[automatically_derived]
                 #derives
-                struct #type_ident_opt #impl_generics #where_clause #fields #unnamed_struct_semicolon
+                #vis struct #type_ident_opt #impl_generics #where_clause #fields #unnamed_struct_semicolon
 
                 #impls
             })
@@ -104,7 +105,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
             Ok(quote!(
                 #[automatically_derived]
                 #derives
-                enum #type_ident_opt #impl_generics #where_clause {
+                #vis enum #type_ident_opt #impl_generics #where_clause {
                     #(#variants),*
                 }
                 #impls
