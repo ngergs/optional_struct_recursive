@@ -152,8 +152,8 @@ fn optioned_fields(fields: Fields) -> TokenStream {
             let fields = f
                 .named
                 .into_iter()
-                .map(|f| (f.ident, f.ty))
-                .map(|(ident, ty)| quote! {#ident: Option<<#ty as  ::optionable::Optionable>::Optioned>})
+                .map(|f| (f.vis,f.ident, f.ty))
+                .map(|(vis,ident, ty)| quote! {#vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>})
                 .collect::<Vec<_>>();
             quote!({
                 #(#fields),*
@@ -163,7 +163,8 @@ fn optioned_fields(fields: Fields) -> TokenStream {
             let fields = f
                 .unnamed
                 .into_iter()
-                .map(|f| quote! {Option<<#f as  ::optionable::Optionable>::Optioned>})
+                .map(|f| (f.vis, f.ty))
+                .map(|(vis, ty)| quote! {#vis Option<<#ty as  ::optionable::Optionable>::Optioned>})
                 .collect::<Vec<_>>();
             quote!((
                 #(#fields),*
@@ -223,14 +224,14 @@ mod tests {
                     #[derive(Optionable)]
                     struct DeriveExample {
                         name: String,
-                        surname: String,
+                        pub surname: String,
                     }
                 },
                 output: quote! {
                     #[automatically_derived]
                     struct DeriveExampleOpt {
                         name: Option<<String as ::optionable::Optionable>::Optioned>,
-                        surname: Option<<String as ::optionable::Optionable>::Optioned>
+                        pub surname: Option<<String as ::optionable::Optionable>::Optioned>
                     }
 
                     #[automatically_derived]
@@ -277,12 +278,12 @@ mod tests {
             TestCase {
                 input: quote! {
                     #[derive(Optionable)]
-                    struct DeriveExample(String, i32);
+                    struct DeriveExample(pub String, i32);
                 },
                 output: quote! {
                     #[automatically_derived]
                     struct DeriveExampleOpt(
-                        Option<<String as ::optionable::Optionable>::Optioned>,
+                        pub Option<<String as ::optionable::Optionable>::Optioned>,
                         Option<<i32 as ::optionable::Optionable>::Optioned>
                     );
 
