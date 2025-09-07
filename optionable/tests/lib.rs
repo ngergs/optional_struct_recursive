@@ -1,4 +1,4 @@
-use optional_struct_recursive_derive::Optionable;
+use optionable_derive::Optionable;
 use serde::Deserialize;
 use serde::Serialize;
 

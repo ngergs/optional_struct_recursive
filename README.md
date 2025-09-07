@@ -1,4 +1,4 @@
-# optional_struct_recursive
+# optionable
 
 Work in progress to derive recursive optional structs in rust, e.g. for a rust-analogon
 of [Kubernetes apply configurations](https://pkg.go.dev/k8s.io/client-go/applyconfigurations).
