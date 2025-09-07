@@ -105,6 +105,13 @@ mod tests {
     }
 
     #[test]
+    /// Check that pointer to `Optionable` types implement optionable.
+    fn ptr() {
+        let a = 2;
+        let _: <&i32 as Optionable>::Optioned = &a;
+    }
+
+    #[test]
     /// Check that `Vec` implements optionable as an example container.
     fn container() {
         let a = vec![1, 2, 3];
