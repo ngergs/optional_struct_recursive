@@ -55,6 +55,12 @@ impl Optionable for String{
 For many primitive types as well as common wrapper or collection types the `Optionable`-trait is already implemented.
 
 ## Limitations
+
+### External types
+Due to the orphan rule the usage of the library becomes cumbersome if one has a use case which heavily relies on crate-external types.
+For well-established libraries adding corresponding `impl` to this crate (feature-gated) would be a worthwhile approach.
+
+### IDE: Resolving associated types
 Due to the use of associated types some IDE-hints do not fully resolve the associated types leaving you with
 `<i32 as Optionable>::Optioned` instead of `i32`. Luckily, for checking type correctness and also for error messages
 when using wrong types the associated types are resolved.

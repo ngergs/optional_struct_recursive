@@ -2,7 +2,6 @@ use optionable::derive::Optionable;
 use optionable::Optionable;
 use serde::Deserialize;
 use serde::Serialize;
-use std::marker::PhantomData;
 
 #[test]
 /// Check that the derive macro works.
@@ -144,23 +143,4 @@ fn derive_forward_other_derives() {
     };
     let a_json = serde_json::to_string(&a).unwrap();
     assert_eq!(a_json, "{\"name\":\"a\",\"surname\":null}");
-}
-
-#[test]
-/// Check that we can circumvent the orphan rule by type wrapping.
-fn orphan_rule_circumvent() {
-    struct WrappedPhantomString(PhantomData<String>);
-    impl Optionable for WrappedPhantomString {
-        type Optioned = Self;
-    }
-
-    #[derive(Optionable)]
-    #[allow(dead_code)]
-    struct DeriveExample {
-        name: WrappedPhantomString,
-    }
-
-    let _ = DeriveExampleOpt {
-        name: Some(WrappedPhantomString(PhantomData)),
-    };
 }
