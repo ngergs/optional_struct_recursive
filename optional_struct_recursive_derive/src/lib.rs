@@ -3,6 +3,10 @@ use std::fmt;
 mod derive;
 
 /// Derives the `Optionable` trait.
+/// If you want the `Optioned`-structure/enum to also derive additional traits
+/// add on the struct/enum-eval `#[optionable(derive(<List of Derives))]`,
+/// e.g. `#[optionable(derive(Deserialize,Serialize))]`.
+///
 #[proc_macro_derive(Optionable, attributes(optionable))]
 pub fn derive_optionable(input: TokenStream) -> TokenStream {
     derive::derive_optionable(input.into())

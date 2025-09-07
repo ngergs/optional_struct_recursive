@@ -1,4 +1,6 @@
 use optional_struct_recursive_derive::Optionable;
+use serde::Deserialize;
+use serde::Serialize;
 
 #[test]
 /// Check that the derive macro works.
@@ -115,4 +117,23 @@ fn derive_enum() {
         number: Some(42),
     };
     let _ = DeriveExampleOpt::Address2(Some("a".to_owned()), Some(42));
+}
+
+#[test]
+/// Check that forwarding other derives via helper attributes works
+fn derive_forward_other_derives() {
+    #[derive(Optionable)]
+    #[optionable(derive(Deserialize, Serialize))]
+    #[allow(dead_code)]
+    struct DeriveExample {
+        name: String,
+        surname: String,
+    }
+
+    let a = DeriveExampleOpt {
+        name: Some("a".to_owned()),
+        surname: None,
+    };
+    let a_json = serde_json::to_string(&a).unwrap();
+    assert_eq!(a_json, "{\"name\":\"a\",\"surname\":null}");
 }
