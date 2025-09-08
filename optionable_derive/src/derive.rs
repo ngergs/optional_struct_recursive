@@ -58,27 +58,33 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
 
     // now we have to derive the actual implementation of #type_ident_opt
     // and add the #impl from above
-    let derives = attrs
-        .derive
-        .unwrap_or_default()
+    let derives = attrs.derive.unwrap_or_default();
+    let skip_optionable_if_serde_serialize = derives
+        .iter()
+        .any(|el| {
+            el.is_ident("Serialize") || {
+                let segments = &el.segments;
+                segments.len() == 2
+                    && segments[0].ident == "serde"
+                    && segments[1].ident == "Serialize"
+            }
+        })
+        .then(|| quote!(#[serde(skip_serializing_if = "Option::is_none")]));
+    let derives = derives
         .iter()
         .map(ToTokens::to_token_stream)
         .collect::<Vec<_>>();
-    let derives = if derives.is_empty() {
-        quote! {}
-    } else {
-        quote! {#[derive(#(#derives),*)]}
-    };
+    let derives = (!derives.is_empty()).then(|| quote! {#[derive(#(#derives),*)]});
     match input.data {
         Data::Struct(s) => {
             error_on_field_helper_attributes(&s.fields, ERR_MSG_HELPER_ATTR_FIELD)?;
             let unnamed_struct_semicolon = (if let Fields::Unnamed(_) = &s.fields {
-                quote! {;}
+                Some(quote! {;})
             } else {
-                quote! {}
+                None
             })
             .to_token_stream();
-            let fields = optioned_fields(s.fields);
+            let fields = optioned_fields(s.fields, skip_optionable_if_serde_serialize.as_ref());
 
             Ok(quote! {
                 #[automatically_derived]
@@ -95,7 +101,8 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 .map(|v| {
                     error_on_helper_attributes(&v.attrs, ERR_MSG_HELPER_ATTR_ENUM_VARIANTS)?;
                     error_on_field_helper_attributes(&v.fields, ERR_MSG_HELPER_ATTR_FIELD)?;
-                    let fields = optioned_fields(v.fields);
+                    let fields =
+                        optioned_fields(v.fields, skip_optionable_if_serde_serialize.as_ref());
                     Ok::<_, syn::Error>((v.ident, fields))
                 })
                 .collect::<Result<Vec<_>, _>>()?
@@ -147,7 +154,7 @@ fn error_on_helper_attributes(attrs: &[Attribute], err_msg: &'static str) -> syn
 /// Returns a tokenstream for the fields of the optioned object (struct/enum variants).
 /// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
 /// Does not include any leading `struct/enum` keywords or any trailing `;`.
-fn optioned_fields(fields: Fields) -> TokenStream {
+fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> TokenStream {
     match fields {
         Fields::Named(f) => {
             let fields = f
@@ -157,7 +164,7 @@ fn optioned_fields(fields: Fields) -> TokenStream {
                 .map(|(vis,ident, ty)| quote! {#vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>})
                 .collect::<Vec<_>>();
             quote!({
-                #(#fields),*
+                #(#attributes #fields),*
             })
         }
         Fields::Unnamed(f) => {
@@ -168,7 +175,7 @@ fn optioned_fields(fields: Fields) -> TokenStream {
                 .map(|(vis, ty)| quote! {#vis Option<<#ty as  ::optionable::Optionable>::Optioned>})
                 .collect::<Vec<_>>();
             quote!((
-                #(#fields),*
+                #(#attributes #fields),*
             ))
         }
         Fields::Unit => quote!(),
@@ -246,7 +253,7 @@ mod tests {
                     }
                 },
             },
-            // named struct fields with forwarded derives
+            // named struct fields with forwarded derives and Serialize annotations
             TestCase {
                 input: quote! {
                     #[derive(Optionable)]
@@ -260,7 +267,40 @@ mod tests {
                     #[automatically_derived]
                     #[derive(Deserialize, Serialize)]
                     struct DeriveExampleAc {
+                        #[serde(skip_serializing_if = "Option::is_none")]
                         name: Option<<String as ::optionable::Optionable>::Optioned>,
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        surname: Option<<String as ::optionable::Optionable>::Optioned>
+                    }
+
+                    #[automatically_derived]
+                    impl ::optionable::Optionable for DeriveExample {
+                        type Optioned = DeriveExampleAc;
+                    }
+
+                    #[automatically_derived]
+                    impl ::optionable::Optionable for DeriveExampleAc {
+                        type Optioned = DeriveExampleAc;
+                    }
+                },
+            },
+            // named struct fields with forwarded derives and Serialize annotations (full path variant)
+            TestCase {
+                input: quote! {
+                    #[derive(Optionable)]
+                    #[optionable(derive(serde::Deserialize,serde::Serialize),suffix="Ac")]
+                    struct DeriveExample {
+                        name: String,
+                        surname: String,
+                    }
+                },
+                output: quote! {
+                    #[automatically_derived]
+                    #[derive(serde::Deserialize, serde::Serialize)]
+                    struct DeriveExampleAc {
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        name: Option<<String as ::optionable::Optionable>::Optioned>,
+                        #[serde(skip_serializing_if = "Option::is_none")]
                         surname: Option<<String as ::optionable::Optionable>::Optioned>
                     }
 

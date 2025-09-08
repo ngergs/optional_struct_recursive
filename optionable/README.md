@@ -57,6 +57,10 @@ impl Optionable for String{
 ```
 For many primitive types as well as common wrapper or collection types the `Optionable`-trait is already implemented.
 
+## Crate features
+- `chrono`: Derive `Optionable` for types from [chrono](https://docs.rs/chrono/latest/chrono/)
+- `serde_json`: Derive `Optionable` for [serde_json](https://docs.rs/serde_json/latest/serde_json/)::Value
+
 ## Limitations
 
 ### External types

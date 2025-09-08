@@ -141,5 +141,5 @@ fn derive_forward_other_derives() {
         surname: None,
     };
     let a_json = serde_json::to_string(&a).unwrap();
-    assert_eq!(a_json, "{\"name\":\"a\",\"surname\":null}");
+    assert_eq!(a_json, "{\"name\":\"a\"}");
 }
