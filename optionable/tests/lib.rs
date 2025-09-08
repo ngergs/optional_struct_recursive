@@ -1,4 +1,4 @@
-use optionable::derive::Optionable;
+use optionable::Optionable;
 use serde::Deserialize;
 use serde::Serialize;
 

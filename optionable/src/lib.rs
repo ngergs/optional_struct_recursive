@@ -1,4 +1,5 @@
-pub use optionable_derive as derive;
+#[doc(inline)]
+pub use optionable_derive::Optionable;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
