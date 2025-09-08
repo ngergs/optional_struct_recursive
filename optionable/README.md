@@ -1,18 +1,17 @@
 # optionable
 
-Tooling to derive structs/enums with all fields recurisvely replaced with `Option`-variants.
+Tooling to derive structs/enums with all fields recursively replaced with `Option`-variants.
 
 One common problem when expressing patches e.g. for [Kubernetes apply configurations](https://pkg.go.dev/k8s.io/client-go/applyconfigurations).
-is that one would need for a given rust struct `T` a corresponding struct where all fields are optional.
+is that one would need for a given rust struct `T` a corresponding struct `TOpt` where all fields are optional.
 While trivial to write for plain structures this quickly becomes tedious for nested structs/enums.
 
 ## Deriving optional structs/enums
 
-The core utility of this library is to provide an `Optionable`-derive macro
-that derives such an optioned type. It supports nested structures as well as various
-container and pointer wrapper. The general logic is the same as for other rust derives,
-If you want to derive `Optionable` for a struct/enum every field of it needs to also 
-have implemented `Optionable`:
+The core utility of this library is to provide an `Optionable`-derive macro that derives such an optioned type.
+It supports nested structures as well as various container and pointer wrapper. 
+The general logic is the same as for other rust derives, If you want to use the derive `Optionable` for a struct/enum
+every field of it needs to also have implemented the corresponding `Optionable` trait (see below):
 ```rust
 #[derive(Optionable)]
 #[optionable(derive(Serialize,Deserialize))]
@@ -28,7 +27,7 @@ struct Address {
 }
 ```
 
-The generated code is (shortened and simplified):
+The generated optioned struct is (shortened and simplified):
 ```rust
 struct DeriveExampleOpt {
     name: Option<String>,
@@ -38,20 +37,20 @@ struct AddressOpt {
     street_name: Option<String>,
     number: Option<u8>,
 }
-``````
+```
 
 ## How it works
-The main trait is quite simple
+The main `Optionable` trait is quite simple
 ```rust
 pub trait Optionable {
     type Optioned;
 }
 ```
-It is basically a marker trait that let's express for a given type `T` which type should be considered it's `Optioned` type
+It is a marker trait that allows to express for a given type `T` which type should be considered its `Optioned` type
 such that `Option<Optioned>` would represent all variants of partial completeness.
-For types without inner structure this means that the `Optioned` type will just be the type itself, e.g.
+For types without inner structure this means that the `Optioned` type will just resolve to the type itself, e.g.
 ```rust
-impl Optionable for String{
+impl Optionable for String {
     type Optioned = String;
 }
 ```
