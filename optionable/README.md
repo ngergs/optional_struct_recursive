@@ -10,9 +10,9 @@ While trivial to write for plain structures this quickly becomes tedious for nes
 
 The core utility of this library is to provide an `Optionable`-derive macro
 that derives such an optioned type. It supports nested structures as well as various
-container and pointer wrapper. The general logic is the same as for other rust derives:
-If you want to derive `Optionable` for a type using a struct/enum as a subfield the
-given struct/enum needs to also derive (or implement) `Optionable`:
+container and pointer wrapper. The general logic is the same as for other rust derives,
+If you want to derive `Optionable` for a struct/enum every field of it needs to also 
+have implemented `Optionable`:
 ```rust
 #[derive(Optionable)]
 #[optionable(derive(Serialize,Deserialize))]
