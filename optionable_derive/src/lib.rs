@@ -5,11 +5,10 @@ mod derive;
 /// Derives the `Optionable` trait.
 ///
 /// If you want the `Optioned`-structure/enum to also derive additional traits
-/// add on the struct/enum-eval `#[optionable(derive(<List of Derives))]`,
-/// e.g. `#[optionable(derive(Deserialize,Serialize))]`.
+/// add on the struct/enum-eval e.g. `#[optionable(derive(Deserialize,Serialize))]`.
 ///
 /// By default, this will generate an "optioned" struct/enum with the name "<original>Opt".
-/// If this causes naming collisions you can specify the suffix with `#[optionable(optioned_suffix="SuffixValue")]`.
+/// If this causes naming collisions you can specify the suffix with `#[optionable(suffix="SuffixValue")]`.
 ///
 #[proc_macro_derive(Optionable, attributes(optionable))]
 pub fn derive_optionable(input: TokenStream) -> TokenStream {

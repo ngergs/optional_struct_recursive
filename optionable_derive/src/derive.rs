@@ -1,15 +1,14 @@
 use crate::error;
 use darling::util::PathList;
 use darling::FromDeriveInput;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
-use std::borrow::Cow;
 use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::token::Where;
 use syn::{
-    parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, Type, TypePath,
-    WhereClause, WherePredicate,
+    parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, LitStr, Type,
+    TypePath, WhereClause, WherePredicate,
 };
 
 const HELPER_IDENT: &str = "optionable";
@@ -23,7 +22,12 @@ const ERR_MSG_HELPER_ATTR_ENUM_VARIANTS: &str =
 /// Helper attributes on the type definition level (attached to the `struct` or `enum` itself).
 struct TypeHelperAttributes {
     derive: Option<PathList>,
-    suffix: Option<Ident>,
+    #[darling(default=default_suffix)]
+    suffix: LitStr,
+}
+
+fn default_suffix() -> LitStr {
+    LitStr::new("Opt", Span::call_site())
 }
 
 /// Derives the `Optionable`-trait from the main `optionable`-library.
@@ -32,11 +36,11 @@ struct TypeHelperAttributes {
 pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> {
     let mut input = syn::parse2::<DeriveInput>(input)?;
     let attrs = TypeHelperAttributes::from_derive_input(&input)?;
-    let suffix = attrs.suffix.map_or(Cow::Borrowed("Opt"), |val| {
-        val.into_token_stream().to_string().into()
-    });
     let vis = input.vis;
-    let type_ident_opt = Ident::new(&(input.ident.to_string() + &suffix), input.ident.span());
+    let type_ident_opt = Ident::new(
+        &(input.ident.to_string() + &attrs.suffix.value()),
+        input.ident.span(),
+    );
     let type_ident = &input.ident;
 
     patch_where_clause_bounds(&mut input.generics);
