@@ -1,0 +1,43 @@
+name: Release-plz
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch: { }
+  pull_request:
+    branches:
+      - main
+    types: [ closed ]
+
+jobs:
+  # Release unpublished packages.
+  release-plz-release:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged }}
+    name: Release-plz release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Configure cache
+        uses: Swatinem/rust-cache@v2
+      - name: Pre-release tests
+        run: |-
+          cargo test
+          cargo test --manifest-path=optionable/Cargo.toml --features chrono,serde_json
+          cargo clippy
+          cargo install --locked cargo-deny
+          cargo deny check license
+#      - name: Run release-plz
+#        uses: release-plz/action@v0.5
+#        with:
+#          command: release
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_CARGO_REGISTRY_TOKEN }}
