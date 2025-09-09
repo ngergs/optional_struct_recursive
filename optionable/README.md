@@ -9,7 +9,8 @@ While trivial to write for plain structures this quickly becomes tedious for nes
 ## Deriving optional structs/enums
 
 The core utility of this library is to provide an `Optionable`-derive macro that derives such an optioned type.
-It supports nested structures as well as various container and pointer wrapper. 
+It supports nested structures as well as various container and pointer wrapper.
+
 The general logic is the same as for other rust derives, If you want to use the derive `Optionable` for a struct/enum
 every field of it needs to also have implemented the corresponding `Optionable` trait (see below):
 ```rust
@@ -70,3 +71,8 @@ For well-established libraries adding corresponding `impl` to this crate (featur
 Due to the use of associated types some IDE-hints do not fully resolve the associated types leaving you with
 `<i32 as Optionable>::Optioned` instead of `i32`. Luckily, for checking type correctness and also for error messages
 when using wrong types the associated types are resolved.
+
+## Similar crates
+That I'm aware of:
+- [optional_struct](https://crates.io/crates/optional_struct): Limit to structs, follows a more manual approach
+  with many granular configuration options, does not support automatic detection of recursive optional sub-structs.

@@ -71,6 +71,11 @@
 //! Due to the use of associated types some IDE-hints do not fully resolve the associated types leaving you with
 //! `<i32 as Optionable>::Optioned` instead of `i32`. Luckily, for checking type correctness and also for error messages
 //! when using wrong types the associated types are resolved.
+//!
+//! ## Similar crates
+//! That I'm aware of:
+//! - [optional_struct](https://crates.io/crates/optional_struct): Limit to structs, follows a more manual approach
+//! with many granular configuration options, does not support automatic detection of recursive optional sub-structs.
 use proc_macro::TokenStream;
 use std::fmt;
 mod derive;
