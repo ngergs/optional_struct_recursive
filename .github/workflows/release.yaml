@@ -34,10 +34,10 @@ jobs:
           cargo clippy
           cargo install --locked cargo-deny
           cargo deny check license
-#      - name: Run release-plz
-#        uses: release-plz/action@v0.5
-#        with:
-#          command: release
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_CARGO_REGISTRY_TOKEN }}
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_CARGO_REGISTRY_TOKEN }}
