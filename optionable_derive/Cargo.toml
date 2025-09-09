@@ -2,11 +2,10 @@
 name = "optionable_derive"
 version = "0.1.0"
 edition = "2024"
-description = "todo"
-repository = "https://github.com/ngergs/optional-struct-recursive"
+description = "Derive macro to derive nested structs with all subfields being optional (e.g. for patches or Kubernetes server side apply)."
+repository = "https://github.com/ngergs/optionable"
 license = "MIT"
 readme = "README.md"
-publish = false
 
 [lints.clippy]
 pedantic = "warn"
