@@ -62,7 +62,7 @@
 
 //! ## Crate features
 //! - `chrono`: Derive [`trait@Optionable`] for types from [chrono](https://docs.rs/chrono/latest/chrono/).
-//! - `serde_json`: Derive [`trait@Optionable`] for [serde_json](https://docs.rs/serde_json/latest/serde_json/)::Value.
+//! - `serde_json`: Derive [`trait@Optionable`] for [serde_json](https://docs.rs/serde_json/latest/serde_json/)`::Value`.
 //!
 //! ## Limitations
 //!
@@ -78,7 +78,7 @@
 //! ## Similar crates
 //! That I'm aware of:
 //! - [optional_struct](https://crates.io/crates/optional_struct): Limit to structs, follows a more manual approach
-//! with many granular configuration options, does not support automatic detection of recursive optional sub-structs.
+//!   with many granular configuration options, does not support automatic detection of recursive optional sub-structs.
 
 #[doc(inline)]
 pub use optionable_derive::Optionable;
@@ -129,12 +129,8 @@ impl_optional_self!(
     // Rust primitives don't have inner structure, https://doc.rust-lang.org/rust-by-example/primitives.html
     i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, char, bool,
     // Other types without inner structure
-    String,
+    String, &str
 );
-
-impl<'a> Optionable for &'a str {
-    type Optioned = Self;
-}
 
 /// Helper macro to generate an impl for `Optionable` for Containers.
 /// Containers can be made optional by getting a corresponding container over the associated optional type.
