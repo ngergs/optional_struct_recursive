@@ -1,7 +1,9 @@
-# optionable
+# optionable_derive
 
-Tooling to derive structs/enums with all fields recursively replaced with `Option`-variants.
+This crate is on it's own not really usable. It is re-exported together with the required
+traits in the [optionable](//crates.io/crates/optionable) crate. The relevant docs can be also found there.
 
+<<<<<<< HEAD
 One common problem when expressing patches e.g. for [Kubernetes apply configurations](https://pkg.go.dev/k8s.io/client-go/applyconfigurations).
 is that one would need for a given rust struct `T` a corresponding struct `TOpt` where all fields are optional.
 While trivial to write for plain structures this quickly becomes tedious for nested structs/enums.
