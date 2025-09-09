@@ -6,6 +6,8 @@ description = "Derive macro (and associated marker trait) to derive nested struc
 repository = "https://github.com/ngergs/optionable"
 license = "MIT"
 readme = "README.md"
+# first need to publish derive dependency
+publish = false
 
 [features]
 default = []
