@@ -1,4 +1,4 @@
-//! # optionable_derive
+//! # `optionable_derive`
 //!
 //! (Documentation for the [optionable](todo) crate where this derive macro is used.
 //! Tooling to derive structs/enums with all fields recursively replaced with `Option`-variants.
@@ -59,7 +59,7 @@
 
 //! ## Crate features
 //! - `chrono`: Derive `Optionable` for types from [chrono](https://docs.rs/chrono/latest/chrono/)
-//! - `serde_json`: Derive `Optionable` for [serde_json](https://docs.rs/serde_json/latest/serde_json/)::Value
+//! - `serde_json`: Derive `Optionable` for [serde_json](https://docs.rs/serde_json/latest/serde_json/)`::Value`
 //!
 //! ## Limitations
 //!
@@ -75,7 +75,7 @@
 //! ## Similar crates
 //! That I'm aware of:
 //! - [optional_struct](https://crates.io/crates/optional_struct): Limit to structs, follows a more manual approach
-//! with many granular configuration options, does not support automatic detection of recursive optional sub-structs.
+//!   with many granular configuration options, does not support automatic detection of recursive optional sub-structs.
 use proc_macro::TokenStream;
 use std::fmt;
 mod derive;
