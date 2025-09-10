@@ -30,10 +30,12 @@ struct Address {
 
 The generated optioned struct is (with resolved associated types):
 ```rust
+#[derive(Serialize,Deserialize)]
 struct DeriveExampleOpt {
     name: Option<String>,
     addresses: Option<Vec<AddressOpt>>,
 }
+#[derive(Serialize,Deserialize)]
 struct AddressOpt {
     street_name: Option<String>,
     number: Option<u8>,

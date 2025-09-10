@@ -32,10 +32,13 @@
 //!
 //! The generated optioned struct is (shortened and simplified):
 //!  ```rust
+//! # use serde::{Serialize,Deserialize};
+//! #[derive(Serialize,Deserialize)]
 //! struct DeriveExampleOpt {
 //!     name: Option<String>,
 //!     addresses: Option<Vec<AddressOpt>>,
 //! }
+//! #[derive(Serialize,Deserialize)]
 //! struct AddressOpt {
 //!     street_name: Option<String>,
 //!     number: Option<u8>,
