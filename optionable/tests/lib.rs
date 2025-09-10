@@ -3,13 +3,13 @@ use serde::Deserialize;
 use serde::Serialize;
 
 #[test]
-/// Check that the derive macro works.
+/// Check that the derive macro works with visibility modifier.
 fn derive_named_struct() {
     #[derive(Optionable)]
     #[allow(dead_code)]
     struct DeriveExample {
         name: String,
-        surname: String,
+        pub surname: String,
     }
 
     let _ = DeriveExampleOpt {
@@ -44,11 +44,11 @@ fn derive_named_struct_required() {
 }
 
 #[test]
-/// Tuple
+/// Tuple with visibility modifiers
 fn derive_unnamed_struct() {
     #[derive(Optionable)]
     #[allow(dead_code)]
-    struct DeriveExample(String, i32);
+    struct DeriveExample(String, pub i32);
 
     let _ = DeriveExampleOpt(None, None);
     let _ = DeriveExampleOpt(Some("a".to_owned()), Some(42));
@@ -136,7 +136,7 @@ fn derive_enum() {
         Unit,
         Plain(String),
         Address { street: String, number: u32 },
-        Address2(String, u32),
+        AddressTuple(String, u32),
     }
 
     // unit does not get optioned as it has no inner structure
@@ -147,14 +147,14 @@ fn derive_enum() {
         street: None,
         number: None,
     };
-    let _ = DeriveExampleOpt::Address2(None, None);
+    let _ = DeriveExampleOpt::AddressTuple(None, None);
 
     let _ = DeriveExampleOpt::Plain(Some("a".to_owned()));
     let _ = DeriveExampleOpt::Address {
         street: Some("a".to_owned()),
         number: Some(42),
     };
-    let _ = DeriveExampleOpt::Address2(Some("a".to_owned()), Some(42));
+    let _ = DeriveExampleOpt::AddressTuple(Some("a".to_owned()), Some(42));
 }
 
 #[test]

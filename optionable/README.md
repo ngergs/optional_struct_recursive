@@ -28,7 +28,7 @@ struct Address {
 }
 ```
 
-The generated optioned struct is (shortened and simplified):
+The generated optioned struct is (with resolved associated types):
 ```rust
 struct DeriveExampleOpt {
     name: Option<String>,
@@ -37,6 +37,28 @@ struct DeriveExampleOpt {
 struct AddressOpt {
     street_name: Option<String>,
     number: Option<u8>,
+}
+```
+
+### Also works for enums
+Enums are also supported for the derive macro, e.g.
+
+```rust
+#[derive(Optionable)]
+enum DeriveExample {
+    Unit,
+    Plain(String),
+    Address { street: String, number: u32 },
+    Address2(String, u32),
+}
+```
+generates the following enum (with resolved associated types):
+```rust
+enum DeriveExampleOpt {
+    Unit,
+    Plain(Option<String>),
+    Address { street: Option<String>, number: Option<u32> },
+    AddressTuple(Option<String>, Option<u32>),
 }
 ```
 

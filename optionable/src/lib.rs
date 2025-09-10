@@ -10,7 +10,7 @@
 //!
 //! The core utility of this library is to provide an [`derive@Optionable`]-derive macro that derives such an optioned type.
 //! It supports nested structures as well as various container and pointer wrapper.
-//! The general logic is the same as for other rust derives, If you want to use the derive [`derive@Optionable`] for a struct/enum
+//! The general logic is the same as for other rust derives, If you want to use the [`derive@Optionable`]-derive macro for a struct/enum
 //! every field of it needs to also have implemented the corresponding [`trait@Optionable`] trait (see below):
 //! ```rust
 //! # use optionable::Optionable;
@@ -32,13 +32,36 @@
 //!
 //! The generated optioned struct is (shortened and simplified):
 //!  ```rust
-//!  struct DeriveExampleOpt {
+//! struct DeriveExampleOpt {
 //!     name: Option<String>,
 //!     addresses: Option<Vec<AddressOpt>>,
 //! }
 //! struct AddressOpt {
 //!     street_name: Option<String>,
 //!     number: Option<u8>,
+//! }
+//! ```
+//!
+//! ### Also works for enums
+//! Enums are also supported for the derive macro, e.g.
+//!
+//! ```rust
+//! # use optionable::Optionable;
+//! #[derive(Optionable)]
+//! enum DeriveExample {
+//!     Unit,
+//!     Plain(String),
+//!     Address { street: String, number: u32 },
+//!     Address2(String, u32),
+//! }
+//! ```
+//! generates the following enum (with resolved associated types):
+//! ```rust
+//! enum DeriveExampleOpt {
+//!     Unit,
+//!     Plain(Option<String>),
+//!     Address { street: Option<String>, number: Option<u32> },
+//!     AddressTuple(Option<String>, Option<u32>),
 //! }
 //! ```
 //!
@@ -91,13 +114,17 @@ mod chrono;
 #[cfg(feature = "serde_json")]
 mod serde_json;
 
-/// Marker trait that signals that this struct has a corresponding type where all potential
-/// inner fields are optional.
+/// Marker trait that associated this type with a corresponding type where potential
+/// inner sub-fields are recursively optional if possible for the given use case of the type.
+/// Implementations of the trait can decide that some fields are also non-optional for the optioned type.
+///
 /// In detail this means that an `Option<T::Optioned>` should allow for every combination
-/// of itself being set as well as just partial subfields of itself being set.
+/// of itself being set as well as just partial subfields of itself being set except
+/// for fields that are always required.
 /// Hence, for types without inner structure like `i32` the `Optioned` type will resolve to itself,
 /// as e.g. `Option<i32>` already expresses the needed granularity.
 pub trait Optionable {
+    /// The associated type where fields (if possible for the given use case) are recursively optional.
     type Optioned;
 }
 
