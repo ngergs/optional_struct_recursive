@@ -1,7 +1,6 @@
 //! # optionable
 //!
-//! (Documentation for the [optionable](todo) crate where this derive macro is used.
-//! Tooling to derive structs/enums with all fields recursively replaced with `Option`-variants.
+//! Library to derive structs/enums with all fields recursively replaced with `Option`-variants.
 //!
 //! One common problem when expressing patches e.g. for [Kubernetes apply configurations](https://pkg.go.dev/k8s.io/client-go/applyconfigurations).
 //! is that one would need for a given rust struct `T` a corresponding struct `TOpt` where all fields are optional.
@@ -76,9 +75,9 @@
 //! when using wrong types the associated types are resolved.
 //!
 //! ## Similar crates
-//! That I'm aware of:
-//! - [optional_struct](https://crates.io/crates/optional_struct): Limit to structs, follows a more manual approach
-//!   with many granular configuration options, does not support automatic detection of recursive optional sub-structs.
+//! Another crate with similar scope is [optional_struct](https://crates.io/crates/optional_struct).
+//! It focuses specifically on structs (not enums) and offers a more manual approach, especially in respect to nested sub-struct,
+//! providing many fine-grained configuration options.
 
 #[doc(inline)]
 pub use optionable_derive::Optionable;
