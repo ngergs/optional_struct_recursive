@@ -1,6 +1,6 @@
 use crate::error;
 use darling::util::PathList;
-use darling::FromDeriveInput;
+use darling::{FromAttributes, FromDeriveInput};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::default::Default;
@@ -12,8 +12,6 @@ use syn::{
 };
 
 const HELPER_IDENT: &str = "optionable";
-const ERR_MSG_HELPER_ATTR_FIELD: &str =
-    "#[optionable] helper attributes not supported on field level.";
 const ERR_MSG_HELPER_ATTR_ENUM_VARIANTS: &str =
     "#[optionable] helper attributes not supported on enum variant level.";
 
@@ -26,13 +24,18 @@ struct TypeHelperAttributes {
     suffix: LitStr,
 }
 
+#[derive(FromAttributes)]
+#[darling(attributes(optionable))]
+/// Helper attributes on the type definition level (attached to the `struct` or `enum` itself).
+struct FieldHelperAttributes {
+    required: Option<()>,
+}
+
 fn default_suffix() -> LitStr {
     LitStr::new("Opt", Span::call_site())
 }
 
 /// Derives the `Optionable`-trait from the main `optionable`-library.
-/// Limited to structs atm.
-/// todo: expand to e.g. enums
 pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> {
     let mut input = syn::parse2::<DeriveInput>(input)?;
     let attrs = TypeHelperAttributes::from_derive_input(&input)?;
@@ -81,14 +84,13 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
     let derives = (!derives.is_empty()).then(|| quote! {#[derive(#(#derives),*)]});
     match input.data {
         Data::Struct(s) => {
-            error_on_field_helper_attributes(&s.fields, ERR_MSG_HELPER_ATTR_FIELD)?;
             let unnamed_struct_semicolon = (if let Fields::Unnamed(_) = &s.fields {
                 Some(quote! {;})
             } else {
                 None
             })
             .to_token_stream();
-            let fields = optioned_fields(s.fields, skip_optionable_if_serde_serialize.as_ref());
+            let fields = optioned_fields(s.fields, skip_optionable_if_serde_serialize.as_ref())?;
 
             Ok(quote! {
                 #[automatically_derived]
@@ -104,9 +106,8 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 .into_iter()
                 .map(|v| {
                     error_on_helper_attributes(&v.attrs, ERR_MSG_HELPER_ATTR_ENUM_VARIANTS)?;
-                    error_on_field_helper_attributes(&v.fields, ERR_MSG_HELPER_ATTR_FIELD)?;
                     let fields =
-                        optioned_fields(v.fields, skip_optionable_if_serde_serialize.as_ref());
+                        optioned_fields(v.fields, skip_optionable_if_serde_serialize.as_ref())?;
                     Ok::<_, syn::Error>((v.ident, fields))
                 })
                 .collect::<Result<Vec<_>, _>>()?
@@ -124,17 +125,6 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
         }
         Data::Union(_) => error("#[derive(Optionable)] not supported for unit structs"),
     }
-}
-
-/// Goes through all fields and all corresponding field attributes,
-/// filters for our [`HELPER_IDENT`] helper-attribute identifier
-/// and reports an error if anything is found.
-fn error_on_field_helper_attributes(fields: &Fields, err_msg: &'static str) -> syn::Result<()> {
-    fields
-        .iter()
-        .map(|f| error_on_helper_attributes(&f.attrs, err_msg))
-        .collect::<Result<Vec<_>, _>>()?;
-    Ok(())
 }
 
 /// Goes through the attributes, filters for our [`HELPER_IDENT`] helper-attribute identifier
@@ -158,15 +148,22 @@ fn error_on_helper_attributes(attrs: &[Attribute], err_msg: &'static str) -> syn
 /// Returns a tokenstream for the fields of the optioned object (struct/enum variants).
 /// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
 /// Does not include any leading `struct/enum` keywords or any trailing `;`.
-fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> TokenStream {
-    match fields {
+fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> syn::Result<TokenStream> {
+    Ok(match fields {
         Fields::Named(f) => {
             let fields = f
                 .named
                 .into_iter()
-                .map(|f| (f.vis,f.ident, f.ty))
-                .map(|(vis,ident, ty)| quote! {#vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>})
-                .collect::<Vec<_>>();
+                .map(|f| {
+                    let (vis, ident, ty) = (f.vis, f.ident, f.ty);
+                    let attrs = FieldHelperAttributes::from_attributes(&f.attrs)?;
+                    Ok::<_, syn::Error>(if attrs.required.is_some() {
+                        quote! {#vis #ident: #ty}
+                    } else {
+                        quote! {#vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>}
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
             quote!({
                 #(#attributes #fields),*
             })
@@ -175,15 +172,22 @@ fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> TokenStr
             let fields = f
                 .unnamed
                 .into_iter()
-                .map(|f| (f.vis, f.ty))
-                .map(|(vis, ty)| quote! {#vis Option<<#ty as  ::optionable::Optionable>::Optioned>})
-                .collect::<Vec<_>>();
+                .map(|f| {
+                    let (vis, ty) = (f.vis, f.ty);
+                    let attrs = FieldHelperAttributes::from_attributes(&f.attrs)?;
+                    Ok::<_, syn::Error>(if attrs.required.is_some() {
+                        quote! {#vis #ty}
+                    } else {
+                        quote! {#vis Option<<#ty as  ::optionable::Optionable>::Optioned>}
+                    })
+                })
+                .collect::<Result<Vec<_>, _>>()?;
             quote!((
                 #(#attributes #fields),*
             ))
         }
         Fields::Unit => quote!(),
-    }
+    })
 }
 
 /// Adjusts the where clause to add the `Optionable` type bounds.
@@ -244,6 +248,34 @@ mod tests {
                     struct DeriveExampleOpt {
                         name: Option<<String as ::optionable::Optionable>::Optioned>,
                         pub surname: Option<<String as ::optionable::Optionable>::Optioned>
+                    }
+
+                    #[automatically_derived]
+                    impl ::optionable::Optionable for DeriveExample {
+                        type Optioned = DeriveExampleOpt;
+                    }
+
+                    #[automatically_derived]
+                    impl ::optionable::Optionable for DeriveExampleOpt {
+                        type Optioned = DeriveExampleOpt;
+                    }
+                },
+            },
+            // named struct fields with required fields
+            TestCase {
+                input: quote! {
+                    #[derive(Optionable)]
+                    struct DeriveExample {
+                        name: String,
+                        #[optionable(required)]
+                        pub surname: String,
+                    }
+                },
+                output: quote! {
+                    #[automatically_derived]
+                    struct DeriveExampleOpt {
+                        name: Option<<String as ::optionable::Optionable>::Optioned>,
+                        pub surname: String
                     }
 
                     #[automatically_derived]
@@ -330,6 +362,30 @@ mod tests {
                     struct DeriveExampleOpt(
                         pub Option<<String as ::optionable::Optionable>::Optioned>,
                         Option<<i32 as ::optionable::Optionable>::Optioned>
+                    );
+
+                    #[automatically_derived]
+                    impl ::optionable::Optionable for DeriveExample {
+                        type Optioned = DeriveExampleOpt;
+                    }
+
+                    #[automatically_derived]
+                    impl ::optionable::Optionable for DeriveExampleOpt {
+                        type Optioned = DeriveExampleOpt;
+                    }
+                },
+            },
+            // unnamed struct fields with required
+            TestCase {
+                input: quote! {
+                    #[derive(Optionable)]
+                    struct DeriveExample(pub String, #[optionable(required)] i32);
+                },
+                output: quote! {
+                    #[automatically_derived]
+                    struct DeriveExampleOpt(
+                        pub Option<<String as ::optionable::Optionable>::Optioned>,
+                        i32
                     );
 
                     #[automatically_derived]

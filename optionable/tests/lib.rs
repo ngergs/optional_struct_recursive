@@ -23,7 +23,28 @@ fn derive_named_struct() {
 }
 
 #[test]
-/// Check that the derive macro works.
+/// Named struct with a required field
+fn derive_named_struct_required() {
+    #[derive(Optionable)]
+    #[allow(dead_code)]
+    struct DeriveExample {
+        name: String,
+        #[optionable(required)]
+        surname: String,
+    }
+
+    let _ = DeriveExampleOpt {
+        name: None,
+        surname: "b".to_owned(),
+    };
+    let _ = DeriveExampleOpt {
+        name: Some("a".to_owned()),
+        surname: "b".to_owned(),
+    };
+}
+
+#[test]
+/// Tuple
 fn derive_unnamed_struct() {
     #[derive(Optionable)]
     #[allow(dead_code)]
@@ -31,6 +52,17 @@ fn derive_unnamed_struct() {
 
     let _ = DeriveExampleOpt(None, None);
     let _ = DeriveExampleOpt(Some("a".to_owned()), Some(42));
+}
+
+#[test]
+/// Tuple with a required field
+fn derive_unnamed_struct_required() {
+    #[derive(Optionable)]
+    #[allow(dead_code)]
+    struct DeriveExample(String, #[optionable(required)] i32);
+
+    let _ = DeriveExampleOpt(None, 42);
+    let _ = DeriveExampleOpt(Some("a".to_owned()), 42);
 }
 
 #[test]

@@ -2,7 +2,7 @@
 name = "optionable_derive"
 version = "0.1.1"
 edition = "2024"
-description = "Derive macro to derive nested structs with all subfields being optional (e.g. for patches or Kubernetes server side apply)."
+description = "Derive macro to derive nested structs/enums with all subfields being optional (e.g. for patches or Kubernetes server side apply)."
 repository = "https://github.com/ngergs/optionable"
 license = "MIT"
 readme = "README.md"

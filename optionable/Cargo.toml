@@ -2,7 +2,7 @@
 name = "optionable"
 version = "0.1.0"
 edition = "2024"
-description = "Derive macro (and associated marker trait) to derive nested structs with all subfields being optional (e.g. for patches or Kubernetes server side apply)."
+description = "Derive macro (and associated marker trait) to derive nested structs/enums with all subfields being optional (e.g. for patches or Kubernetes server side apply)."
 repository = "https://github.com/ngergs/optionable"
 license = "MIT"
 readme = "README.md"
