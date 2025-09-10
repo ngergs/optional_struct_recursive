@@ -87,7 +87,7 @@ dependencies = [
 
 [[package]]
 name = "optionable"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "optionable_derive",
@@ -97,7 +97,7 @@ dependencies = [
 
 [[package]]
 name = "optionable_derive"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "darling",
  "proc-macro2",
