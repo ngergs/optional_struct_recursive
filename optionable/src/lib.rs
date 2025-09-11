@@ -138,7 +138,7 @@ impl<T: Optionable> Optionable for Option<T> {
     type Optioned = T::Optioned;
 }
 
-// Blanket implementation for references to `Optionalable` types.
+// Blanket implementation for references to `Optionable` types.
 impl<'a, T: Optionable> Optionable for &'a T {
     type Optioned = &'a T::Optioned;
 }
