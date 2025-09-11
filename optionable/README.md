@@ -28,7 +28,7 @@ struct Address {
 }
 ```
 
-The generated optioned struct is (with resolved associated types):
+The generated optioned struct is (shown here with resolved associated types):
 ```rust
 #[derive(Serialize,Deserialize)]
 struct DeriveExampleOpt {
@@ -54,7 +54,7 @@ enum DeriveExample {
     Address2(String, u32),
 }
 ```
-generates the following enum (with resolved associated types):
+generates the following enum (shown here with resolved associated types):
 ```rust
 enum DeriveExampleOpt {
     Unit,

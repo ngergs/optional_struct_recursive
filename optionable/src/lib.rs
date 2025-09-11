@@ -30,7 +30,7 @@
 //! }
 //! ```
 //!
-//! The generated optioned struct is (shortened and simplified):
+//! The generated optioned struct is (shown here with resolved associated types):
 //!  ```rust
 //! # use serde::{Serialize,Deserialize};
 //! #[derive(Serialize,Deserialize)]
@@ -58,7 +58,7 @@
 //!     Address2(String, u32),
 //! }
 //! ```
-//! generates the following enum (with resolved associated types):
+//! generates the following enum (shown here with resolved associated types):
 //! ```rust
 //! enum DeriveExampleOpt {
 //!     Unit,
