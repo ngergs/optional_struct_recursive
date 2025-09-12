@@ -7,7 +7,7 @@ use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::token::Where;
 use syn::{
-    parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, LitStr, Type,
+    parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, LitStr, Path, Type,
     TypePath, WhereClause, WherePredicate,
 };
 
@@ -68,14 +68,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
     let derives = attrs.derive.unwrap_or_default();
     let skip_optionable_if_serde_serialize = derives
         .iter()
-        .any(|el| {
-            el.is_ident("Serialize") || {
-                let segments = &el.segments;
-                segments.len() == 2
-                    && segments[0].ident == "serde"
-                    && segments[1].ident == "Serialize"
-            }
-        })
+        .any(is_serialize)
         .then(|| quote!(#[serde(skip_serializing_if = "Option::is_none")]));
     let derives = derives
         .iter()
@@ -148,7 +141,10 @@ fn error_on_helper_attributes(attrs: &[Attribute], err_msg: &'static str) -> syn
 /// Returns a tokenstream for the fields of the optioned object (struct/enum variants).
 /// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
 /// Does not include any leading `struct/enum` keywords or any trailing `;`.
-fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> syn::Result<TokenStream> {
+fn optioned_fields(
+    fields: Fields,
+    serde_attributes: Option<&TokenStream>,
+) -> syn::Result<TokenStream> {
     Ok(match fields {
         Fields::Named(f) => {
             let fields = f
@@ -159,13 +155,16 @@ fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> syn::Res
                     let attrs = FieldHelperAttributes::from_attributes(&f.attrs)?;
                     Ok::<_, syn::Error>(if attrs.required.is_some() {
                         quote! {#vis #ident: #ty}
+                    } else if is_option(&ty) {
+                        // Type is already an Option, no need to add an outer one
+                        quote! {#serde_attributes #vis #ident: <#ty as ::optionable::Optionable>::Optioned}
                     } else {
-                        quote! {#vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>}
+                        quote! {#serde_attributes #vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>}
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             quote!({
-                #(#attributes #fields),*
+                #(#fields),*
             })
         }
         Fields::Unnamed(f) => {
@@ -178,16 +177,49 @@ fn optioned_fields(fields: Fields, attributes: Option<&TokenStream>) -> syn::Res
                     Ok::<_, syn::Error>(if attrs.required.is_some() {
                         quote! {#vis #ty}
                     } else {
-                        quote! {#vis Option<<#ty as  ::optionable::Optionable>::Optioned>}
+                        quote! {#serde_attributes #vis Option<<#ty as  ::optionable::Optionable>::Optioned>}
                     })
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             quote!((
-                #(#attributes #fields),*
+                #(#fields),*
             ))
         }
         Fields::Unit => quote!(),
     })
+}
+
+/// Checks whether this type identifier is a `std::option::Option` or a shortened variant of it.
+fn is_option(ty: &Type) -> bool {
+    if let Type::Path(TypePath {
+        qself: _qself,
+        path,
+    }) = &ty
+        && {
+            let segments = &path.segments;
+            (segments.len() == 1 && segments[0].ident == "Option")
+                || (segments.len() == 2
+                    && segments[0].ident == "option"
+                    && segments[1].ident == "Option")
+                || (segments.len() == 3
+                    && segments[0].ident == "std"
+                    && segments[1].ident == "option"
+                    && segments[2].ident == "Option")
+        }
+    {
+        println!("{:?}", path.segments);
+        true
+    } else {
+        false
+    }
+}
+
+/// Checks whether this path is `serde::Serialize` or a shortened version of it.
+fn is_serialize(path: &Path) -> bool {
+    path.is_ident("Serialize") || {
+        let segments = &path.segments;
+        segments.len() == 2 && segments[0].ident == "serde" && segments[1].ident == "Serialize"
+    }
 }
 
 /// Adjusts the where clause to add the `Optionable` type bounds.
@@ -296,6 +328,7 @@ mod tests {
                     #[optionable(derive(Deserialize,Serialize),suffix="Ac")]
                     struct DeriveExample {
                         name: String,
+                        middle_name: Option<String>,
                         surname: String,
                     }
                 },
@@ -305,6 +338,8 @@ mod tests {
                     struct DeriveExampleAc {
                         #[serde(skip_serializing_if = "Option::is_none")]
                         name: Option<<String as ::optionable::Optionable>::Optioned>,
+                        #[serde(skip_serializing_if = "Option::is_none")]
+                        middle_name: <Option<String> as ::optionable::Optionable>::Optioned,
                         #[serde(skip_serializing_if = "Option::is_none")]
                         surname: Option<<String as ::optionable::Optionable>::Optioned>
                     }

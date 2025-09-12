@@ -165,13 +165,15 @@ fn derive_forward_other_derives() {
     #[allow(dead_code)]
     struct DeriveExample {
         name: String,
+        middle_name: Option<String>,
         surname: String,
     }
 
     let a = DeriveExampleOpt {
         name: Some("a".to_owned()),
+        middle_name: Some("b".to_owned()), // no nested Options here
         surname: None,
     };
     let a_json = serde_json::to_string(&a).unwrap();
-    assert_eq!(a_json, "{\"name\":\"a\"}");
+    assert_eq!(a_json, "{\"name\":\"a\",\"middle_name\":\"b\"}");
 }
