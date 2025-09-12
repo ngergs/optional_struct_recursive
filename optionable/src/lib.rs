@@ -171,6 +171,10 @@ impl_container!(
     Box, Rc, Arc, RefCell, Mutex,
 );
 
+impl<T: Optionable, E> Optionable for Result<T, E> {
+    type Optioned = Result<T::Optioned, E>;
+}
+
 impl<T: Optionable, S> Optionable for HashSet<T, S> {
     type Optioned = HashSet<T::Optioned, S>;
 }
@@ -187,6 +191,7 @@ impl<K, T: Optionable, S> Optionable for HashMap<K, T, S> {
 mod tests {
     use crate::Optionable;
     use std::collections::{BTreeMap, HashMap};
+    use std::fmt::Error;
 
     #[test]
     /// Check that an exemplary primitive type like `i32` resolves to itself as `Optioned` type.
@@ -217,6 +222,13 @@ mod tests {
     fn container() {
         let a = vec![1, 2, 3];
         let _: <Vec<i64> as Optionable>::Optioned = a;
+    }
+
+    #[test]
+    /// Check that `Result` implements optionable.
+    fn result() {
+        let a = Ok::<_, Error>(42);
+        let _: <Result<i32, _> as Optionable>::Optioned = a;
     }
 
     #[test]
