@@ -1,6 +1,6 @@
 [package]
 name = "optionable"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 description = "Derive macro (and associated marker trait) to derive nested structs/enums with all subfields being optional (e.g. for patches or Kubernetes server side apply)."
 repository = "https://github.com/ngergs/optionable"
