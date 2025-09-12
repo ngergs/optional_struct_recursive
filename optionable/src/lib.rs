@@ -131,13 +131,6 @@ pub trait Optionable {
     type Optioned;
 }
 
-/// This impl looks unintuitive. Keep in mind that `Optioned` has to be interpreted in the context
-/// that an `Option<T::Optioned>` should allow for every combination. So we don't need
-/// to keep an 'inner' `Option` here.
-impl<T: Optionable> Optionable for Option<T> {
-    type Optioned = T::Optioned;
-}
-
 // Blanket implementation for references to `Optionable` types.
 impl<'a, T: Optionable> Optionable for &'a T {
     type Optioned = &'a T::Optioned;
@@ -172,6 +165,7 @@ macro_rules! impl_container {
 }
 
 impl_container!(
+    Option,
     // Collections without an extra key, https://doc.rust-lang.org/std/collections/index.html
     Vec, VecDeque, LinkedList, BTreeSet, BinaryHeap, // Smart pointer and sync-container
     Box, Rc, Arc, RefCell, Mutex,
@@ -193,14 +187,6 @@ impl<K, T: Optionable, S> Optionable for HashMap<K, T, S> {
 mod tests {
     use crate::Optionable;
     use std::collections::{BTreeMap, HashMap};
-
-    #[test]
-    fn option() {
-        let a: Option<i32> = Some(10);
-        // check that the 'inner' `Option` is removed, for reasoning see impl doc for `Option`.
-        #[allow(clippy::unnecessary_literal_unwrap)]
-        let _: <Option<i32> as Optionable>::Optioned = a.unwrap();
-    }
 
     #[test]
     /// Check that an exemplary primitive type like `i32` resolves to itself as `Optioned` type.
