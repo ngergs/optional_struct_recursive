@@ -4,6 +4,7 @@ use darling::{FromAttributes, FromDeriveInput};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::default::Default;
+use std::iter;
 use syn::punctuated::Punctuated;
 use syn::token::Where;
 use syn::{
@@ -83,7 +84,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 None
             })
             .to_token_stream();
-            let fields = optioned_fields(s.fields, skip_optionable_if_serde_serialize.as_ref())?;
+            let fields = optioned_fields(&s.fields, skip_optionable_if_serde_serialize.as_ref())?;
 
             Ok(quote! {
                 #[automatically_derived]
@@ -100,7 +101,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                 .map(|v| {
                     error_on_helper_attributes(&v.attrs, ERR_MSG_HELPER_ATTR_ENUM_VARIANTS)?;
                     let fields =
-                        optioned_fields(v.fields, skip_optionable_if_serde_serialize.as_ref())?;
+                        optioned_fields(&v.fields, skip_optionable_if_serde_serialize.as_ref())?;
                     Ok::<_, Error>((v.ident, fields))
                 })
                 .collect::<Result<Vec<_>, _>>()?
@@ -124,12 +125,12 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
 /// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
 /// Does not include any leading `struct/enum` keywords or any trailing `;`.
 fn optioned_fields(
-    fields: Fields,
+    fields: &Fields,
     serde_attributes: Option<&TokenStream>,
 ) -> syn::Result<TokenStream> {
     fields_to_tokenstream(
-        fields,
-        &mut FieldHandlers {
+        &fields,
+        &FieldHandlers {
             required: |Field { vis, ident, ty, .. }| {
                 let colon = ident.as_ref().map(|_| quote! {:});
                 quote! {#vis #ident #colon #ty}
@@ -148,35 +149,29 @@ fn optioned_fields(
 
 /// Maps the fields to a tokenstream calling the provided `FieldHandlers` for the mapping.
 fn fields_to_tokenstream<F1, F2, F3>(
-    fields: Fields,
+    fields: &Fields,
     field_handlers: &FieldHandlers<F1, F2, F3>,
 ) -> syn::Result<TokenStream>
 where
-    F1: Fn(Field) -> TokenStream,
-    F2: Fn(Field) -> TokenStream,
-    F3: Fn(Field) -> TokenStream,
+    F1: Fn(&Field) -> TokenStream,
+    F2: Fn(&Field) -> TokenStream,
+    F3: Fn(&Field) -> TokenStream,
 {
+    let fields_iter: Box<dyn Iterator<Item = &Field>> = match &fields {
+        Fields::Named(f) => Box::new(f.named.iter()),
+        Fields::Unnamed(f) => Box::new(f.unnamed.iter()),
+        Fields::Unit => Box::new(iter::empty()),
+    };
+    let fields_tokenstream = fields_iter
+        .map(|f| call_field_handler(field_handlers, f))
+        .collect::<Result<Vec<_>, _>>()?;
     Ok(match fields {
-        Fields::Named(f) => {
-            let fields = f
-                .named
-                .into_iter()
-                .map(|f| call_field_handler(field_handlers, f))
-                .collect::<Result<Vec<_>, _>>()?;
-            quote!({
-                #(#fields),*
-            })
-        }
-        Fields::Unnamed(f) => {
-            let fields = f
-                .unnamed
-                .into_iter()
-                .map(|f| call_field_handler(field_handlers, f))
-                .collect::<Result<Vec<_>, _>>()?;
-            quote!((
-                #(#fields),*
-            ))
-        }
+        Fields::Named(_) => quote!({
+            #(#fields_tokenstream),*
+        }),
+        Fields::Unnamed(_) => quote!((
+            #(#fields_tokenstream),*
+        )),
         Fields::Unit => quote!(),
     })
 }
@@ -231,9 +226,9 @@ fn error_on_helper_attributes(attrs: &[Attribute], err_msg: &'static str) -> syn
 /// How to handle different cases
 struct FieldHandlers<F1, F2, F3>
 where
-    F1: Fn(Field) -> TokenStream,
-    F2: Fn(Field) -> TokenStream,
-    F3: Fn(Field) -> TokenStream,
+    F1: Fn(&Field) -> TokenStream,
+    F2: Fn(&Field) -> TokenStream,
+    F3: Fn(&Field) -> TokenStream,
 {
     /// Called if the field has the `#[optionable(required)]` helper attribute
     required: F1,
@@ -246,12 +241,12 @@ where
 /// Takes care of dispatching to the correct field handler
 fn call_field_handler<F1, F2, F3>(
     handlers: &FieldHandlers<F1, F2, F3>,
-    field: Field,
+    field: &Field,
 ) -> Result<TokenStream, Error>
 where
-    F1: Fn(Field) -> TokenStream,
-    F2: Fn(Field) -> TokenStream,
-    F3: Fn(Field) -> TokenStream,
+    F1: Fn(&Field) -> TokenStream,
+    F2: Fn(&Field) -> TokenStream,
+    F3: Fn(&Field) -> TokenStream,
 {
     let attrs = FieldHelperAttributes::from_attributes(&field.attrs)?;
     Ok::<_, Error>(if attrs.required.is_some() {
