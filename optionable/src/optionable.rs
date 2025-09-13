@@ -185,7 +185,9 @@ impl<K, T: Optionable, S> Optionable for HashMap<K, T, S> {
     type Optioned = HashMap<K, T::Optioned, S>;
 }
 
-impl<K: Ord + Hash, T: OptionableConvert> OptionableConvert for HashMap<K, T> {
+impl<K: Ord + Hash, T: OptionableConvert, S: BuildHasher + Default> OptionableConvert
+    for HashMap<K, T, S>
+{
     inner_impl_convert_map!();
 }
 

@@ -129,7 +129,7 @@ fn optioned_fields(
     serde_attributes: Option<&TokenStream>,
 ) -> syn::Result<TokenStream> {
     fields_to_tokenstream(
-        &fields,
+        fields,
         &FieldHandlers {
             required: |Field { vis, ident, ty, .. }| {
                 let colon = ident.as_ref().map(|_| quote! {:});
