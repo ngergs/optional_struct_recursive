@@ -105,13 +105,12 @@
 //! It focuses specifically on structs (not enums) and offers a more manual approach, especially in respect to nested sub-struct,
 //! providing many fine-grained configuration options.
 
+use crate::optionable::Error;
 #[doc(inline)]
 pub use optionable_derive::Optionable;
 
-use std::cell::RefCell;
-use std::collections::{BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque};
-use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+pub mod optionable;
+
 #[cfg(feature = "chrono")]
 mod chrono;
 #[cfg(feature = "serde_json")]
@@ -131,113 +130,30 @@ pub trait Optionable {
     type Optioned;
 }
 
-// Blanket implementation for references to `Optionable` types.
-impl<'a, T: Optionable> Optionable for &'a T {
-    type Optioned = &'a T::Optioned;
-}
+/// Helper methodes to transform in and from optioned objects as well as merging.
+/// Only available for sized types.
+pub trait OptionableConvert: Sized + Optionable {
+    /// Transforms this object into an optioned variant which all fields set.
+    ///
+    /// We cannot implement `Into` from the stdlib as we need to implement this
+    /// for various stdlib primitives and containers.
+    fn into_optioned(self) -> Self::Optioned;
 
-/// Helper macro to generate an impl for `Optionalable` where the `Optioned` type
-/// resolves to itself for types without inner structure like primitives (e.g. `i32`).
-macro_rules! impl_optional_self {
-    ($($t:ty),* $(,)?) => {
-        $(impl Optionable for $t{
-            type Optioned = Self;
-        })*
-    };
-}
-pub(crate) use impl_optional_self;
-
-impl_optional_self!(
-    // Rust primitives don't have inner structure, https://doc.rust-lang.org/rust-by-example/primitives.html
-    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64, char, bool,
-    // Other types without inner structure
-    String, &str
-);
-
-/// Helper macro to generate an impl for `Optionable` for Containers.
-/// Containers can be made optional by getting a corresponding container over the associated optional type.
-macro_rules! impl_container {
-    ($($t:ident),* $(,)?) => {
-        $(impl<T: Optionable> Optionable for $t<T>{
-            type Optioned = $t<T::Optioned>;
-        })*
-    };
-}
-
-impl_container!(
-    Option,
-    // Collections without an extra key, https://doc.rust-lang.org/std/collections/index.html
-    Vec, VecDeque, LinkedList, BTreeSet, BinaryHeap, // Smart pointer and sync-container
-    Box, Rc, Arc, RefCell, Mutex,
-);
-
-impl<T: Optionable, E> Optionable for Result<T, E> {
-    type Optioned = Result<T::Optioned, E>;
-}
-
-impl<T: Optionable, S> Optionable for HashSet<T, S> {
-    type Optioned = HashSet<T::Optioned, S>;
-}
-
-impl<K, T: Optionable> Optionable for BTreeMap<K, T> {
-    type Optioned = BTreeMap<K, T::Optioned>;
-}
-
-impl<K, T: Optionable, S> Optionable for HashMap<K, T, S> {
-    type Optioned = HashMap<K, T::Optioned, S>;
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::Optionable;
-    use std::collections::{BTreeMap, HashMap};
-    use std::fmt::Error;
-
-    #[test]
-    /// Check that an exemplary primitive type like `i32` resolves to itself as `Optioned` type.
-    /// As all primitives share the same macro-generated code it does not add any value to iterate through
-    /// all of them. If we missed a primitive type at the macro invocation we would also miss it at listing
-    /// the types for the test.
-    fn primitive_types_optioned_self() {
-        let a: i32 = 10;
-        let _: <i32 as Optionable>::Optioned = a;
-    }
-
-    #[test]
-    /// Check that &str implements `Optionable`.
-    fn str() {
-        let a = "hello";
-        let _: <&str as Optionable>::Optioned = a;
-    }
-
-    #[test]
-    /// Check that pointer to `Optionable` types implement optionable.
-    fn ptr() {
-        let a = 2;
-        let _: <&i32 as Optionable>::Optioned = &a;
-    }
-
-    #[test]
-    /// Check that `Vec` implements optionable as an example container.
-    fn container() {
-        let a = vec![1, 2, 3];
-        let _: <Vec<i64> as Optionable>::Optioned = a;
-    }
-
-    #[test]
-    /// Check that `Result` implements optionable.
-    fn result() {
-        let a = Ok::<_, Error>(42);
-        let _: <Result<i32, _> as Optionable>::Optioned = a;
-    }
-
-    #[test]
-    /// Check that `HashMap` and `BTreeMap` implements optionable.
-    fn map() {
-        let a = HashMap::from([(1, "a".to_owned())]);
-        let _: <HashMap<i32, String> as Optionable>::Optioned = a;
-
-        let a = BTreeMap::from([(1, "a".to_owned())]);
-        let _: <BTreeMap<i32, String> as Optionable>::Optioned = a;
-    }
+    /// Try to build this full type from its optioned variant.
+    ///
+    /// We cannot implement `TryFrom` from the stdlib as we need to implement this
+    /// for various stdlib primitives and containers.
+    ///
+    /// # Errors
+    /// - If fields required by the full type are not set.
+    fn try_from_optioned(value: Self::Optioned) -> Result<Self, Error>;
+    /// Merge the optioned values into this full type. List-like types are overwritten if set in `other`.
+    /// Maps are merged per key.
+    ///
+    /// # Errors
+    /// - There are scenarios where the full type allows some missing fields but the optioned type
+    ///   also does not hold enough subfields to constructs a full entry with the respective `try_from`.
+    ///   An example would be a field with type `Option<T>` and value `None` for `self` and type `Option<T::Optioned>`
+    ///   and `Some` value for `other`. The `T::try_from(T::Optioned)` can fail is fields are missing for this subfield.
+    fn merge(&mut self, other: Self::Optioned) -> Result<(), Error>;
 }

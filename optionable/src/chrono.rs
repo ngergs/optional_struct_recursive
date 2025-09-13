@@ -1,7 +1,7 @@
-use crate::{impl_optional_self, Optionable};
+use crate::optionable::impl_optional_self;
+use crate::Optionable;
 use chrono::{DateTime, Days, Months, NaiveDate, NaiveDateTime, NaiveTime, TimeDelta, TimeZone};
 
-#[cfg(feature = "chrono")]
 impl<Tz: TimeZone> Optionable for DateTime<Tz> {
     type Optioned = Self;
 }
