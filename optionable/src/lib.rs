@@ -130,7 +130,7 @@ pub trait Optionable {
     type Optioned;
 }
 
-/// Helper methodes to transform in and from optioned objects as well as merging.
+/// Helper methods to transform in and from optioned objects as well as merging.
 /// Only available for sized types.
 pub trait OptionableConvert: Sized + Optionable {
     /// Transforms this object into an optioned variant which all fields set.

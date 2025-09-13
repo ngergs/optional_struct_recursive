@@ -7,8 +7,8 @@ use std::default::Default;
 use syn::punctuated::Punctuated;
 use syn::token::Where;
 use syn::{
-    parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics, LitStr, Path, Type,
-    TypePath, WhereClause, WherePredicate,
+    parse_quote, Attribute, Data, DeriveInput, Error, Field, Fields, GenericParam, Generics, LitStr, Path,
+    Type, TypePath, WhereClause, WherePredicate,
 };
 
 const HELPER_IDENT: &str = "optionable";
@@ -101,7 +101,7 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
                     error_on_helper_attributes(&v.attrs, ERR_MSG_HELPER_ATTR_ENUM_VARIANTS)?;
                     let fields =
                         optioned_fields(v.fields, skip_optionable_if_serde_serialize.as_ref())?;
-                    Ok::<_, syn::Error>((v.ident, fields))
+                    Ok::<_, Error>((v.ident, fields))
                 })
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
@@ -118,6 +118,96 @@ pub(crate) fn derive_optionable(input: TokenStream) -> syn::Result<TokenStream> 
         }
         Data::Union(_) => error("#[derive(Optionable)] not supported for unit structs"),
     }
+}
+
+/// Returns a tokenstream for the fields and potential convert implementation of the optioned object (struct/enum variants).
+/// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
+/// Does not include any leading `struct/enum` keywords or any trailing `;`.
+fn optioned_fields(
+    fields: Fields,
+    serde_attributes: Option<&TokenStream>,
+) -> syn::Result<TokenStream> {
+    fields_to_tokenstream(
+        fields,
+        &mut FieldHandlers {
+            required: |Field { vis, ident, ty, .. }| {
+                let colon = ident.as_ref().map(|_| quote! {:});
+                quote! {#vis #ident #colon #ty}
+            },
+            option: |Field { vis, ident, ty, .. }| {
+                let colon = ident.as_ref().map(|_| quote! {:});
+                quote! {#serde_attributes #vis #ident #colon <#ty as ::optionable::Optionable>::Optioned}
+            },
+            fallback: |Field { vis, ident, ty, .. }| {
+                let colon = ident.as_ref().map(|_| quote! {:});
+                quote! {#serde_attributes #vis #ident #colon Option<<#ty as ::optionable::Optionable>::Optioned>}
+            },
+        },
+    )
+}
+
+/// Maps the fields to a tokenstream calling the provided `FieldHandlers` for the mapping.
+fn fields_to_tokenstream<F1, F2, F3>(
+    fields: Fields,
+    field_handlers: &FieldHandlers<F1, F2, F3>,
+) -> syn::Result<TokenStream>
+where
+    F1: Fn(Field) -> TokenStream,
+    F2: Fn(Field) -> TokenStream,
+    F3: Fn(Field) -> TokenStream,
+{
+    Ok(match fields {
+        Fields::Named(f) => {
+            let fields = f
+                .named
+                .into_iter()
+                .map(|f| call_field_handler(field_handlers, f))
+                .collect::<Result<Vec<_>, _>>()?;
+            quote!({
+                #(#fields),*
+            })
+        }
+        Fields::Unnamed(f) => {
+            let fields = f
+                .unnamed
+                .into_iter()
+                .map(|f| call_field_handler(field_handlers, f))
+                .collect::<Result<Vec<_>, _>>()?;
+            quote!((
+                #(#fields),*
+            ))
+        }
+        Fields::Unit => quote!(),
+    })
+}
+
+/// Adjusts the where clause to add the `Optionable` type bounds.
+/// Basically the original where clause with a type bound to `Optionable` added
+/// for every generic type parameter.
+fn patch_where_clause_bounds(generics: &mut Generics) {
+    let where_clause = generics.where_clause.get_or_insert_with(|| WhereClause {
+        where_token: Where::default(),
+        predicates: Punctuated::default(),
+    });
+    generics.params.iter().for_each(|param| {
+        if let GenericParam::Type(type_param) = param {
+            let ident = &type_param.ident;
+            for pred in &mut where_clause.predicates {
+                if let WherePredicate::Type(pred_ty) = pred
+                    && let Type::Path(TypePath { qself: None, path }) = &pred_ty.bounded_ty
+                    && path.is_ident(ident)
+                {
+                    // found an existing type bound for the given ident (e.g. `T`), add our `Optionable` bound
+                    pred_ty.bounds.push(parse_quote!(::optionable::Optionable));
+                    return;
+                }
+            }
+            // no type bound found, create a new one
+            where_clause
+                .predicates
+                .push(parse_quote!(#ident: ::optionable::Optionable));
+        }
+    });
 }
 
 /// Goes through the attributes, filters for our [`HELPER_IDENT`] helper-attribute identifier
@@ -138,54 +228,41 @@ fn error_on_helper_attributes(attrs: &[Attribute], err_msg: &'static str) -> syn
     }
 }
 
-/// Returns a tokenstream for the fields of the optioned object (struct/enum variants).
-/// The returned tokenstream will be of the form `{...}` for named fields and `(...)` for unnamed fields.
-/// Does not include any leading `struct/enum` keywords or any trailing `;`.
-fn optioned_fields(
-    fields: Fields,
-    serde_attributes: Option<&TokenStream>,
-) -> syn::Result<TokenStream> {
-    Ok(match fields {
-        Fields::Named(f) => {
-            let fields = f
-                .named
-                .into_iter()
-                .map(|f| {
-                    let (vis, ident, ty) = (f.vis, f.ident, f.ty);
-                    let attrs = FieldHelperAttributes::from_attributes(&f.attrs)?;
-                    Ok::<_, syn::Error>(if attrs.required.is_some() {
-                        quote! {#vis #ident: #ty}
-                    } else if is_option(&ty) {
-                        // Type is already an Option, no need to add an outer one
-                        quote! {#serde_attributes #vis #ident: <#ty as ::optionable::Optionable>::Optioned}
-                    } else {
-                        quote! {#serde_attributes #vis #ident: Option<<#ty as  ::optionable::Optionable>::Optioned>}
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            quote!({
-                #(#fields),*
-            })
-        }
-        Fields::Unnamed(f) => {
-            let fields = f
-                .unnamed
-                .into_iter()
-                .map(|f| {
-                    let (vis, ty) = (f.vis, f.ty);
-                    let attrs = FieldHelperAttributes::from_attributes(&f.attrs)?;
-                    Ok::<_, syn::Error>(if attrs.required.is_some() {
-                        quote! {#vis #ty}
-                    } else {
-                        quote! {#serde_attributes #vis Option<<#ty as  ::optionable::Optionable>::Optioned>}
-                    })
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            quote!((
-                #(#fields),*
-            ))
-        }
-        Fields::Unit => quote!(),
+/// How to handle different cases
+struct FieldHandlers<F1, F2, F3>
+where
+    F1: Fn(Field) -> TokenStream,
+    F2: Fn(Field) -> TokenStream,
+    F3: Fn(Field) -> TokenStream,
+{
+    /// Called if the field has the `#[optionable(required)]` helper attribute
+    required: F1,
+    /// Called if the field is not required and of type `Option<...>`
+    option: F2,
+    /// Called for other cases
+    fallback: F3,
+}
+
+/// Takes care of dispatching to the correct field handler
+fn call_field_handler<F1, F2, F3>(
+    handlers: &FieldHandlers<F1, F2, F3>,
+    field: Field,
+) -> Result<TokenStream, Error>
+where
+    F1: Fn(Field) -> TokenStream,
+    F2: Fn(Field) -> TokenStream,
+    F3: Fn(Field) -> TokenStream,
+{
+    let attrs = FieldHelperAttributes::from_attributes(&field.attrs)?;
+    Ok::<_, Error>(if attrs.required.is_some() {
+        (handlers.required)(field)
+        //quote! {#vis #ident: #ty}
+    } else if is_option(&field.ty) {
+        (handlers.option)(field)
+        //quote! {#serde_attributes #vis #ident: <#ty as ::optionable::Optionable>::Optioned}
+    } else {
+        (handlers.fallback)(field)
+        //quote! {#serde_attributes #vis #ident: Option<<#ty as ::optionable::Optionable>::Optioned>}
     })
 }
 
@@ -220,35 +297,6 @@ fn is_serialize(path: &Path) -> bool {
         let segments = &path.segments;
         segments.len() == 2 && segments[0].ident == "serde" && segments[1].ident == "Serialize"
     }
-}
-
-/// Adjusts the where clause to add the `Optionable` type bounds.
-/// Basically the original where clause with a type bound to `Optionable` added
-/// for every generic type parameter.
-fn patch_where_clause_bounds(generics: &mut Generics) {
-    let where_clause = generics.where_clause.get_or_insert_with(|| WhereClause {
-        where_token: Where::default(),
-        predicates: Punctuated::default(),
-    });
-    generics.params.iter().for_each(|param| {
-        if let GenericParam::Type(type_param) = param {
-            let ident = &type_param.ident;
-            for pred in &mut where_clause.predicates {
-                if let WherePredicate::Type(pred_ty) = pred
-                    && let Type::Path(TypePath { qself: None, path }) = &pred_ty.bounded_ty
-                    && path.is_ident(ident)
-                {
-                    // found an existing type bound for the given ident (e.g. `T`), add our `Optionable` bound
-                    pred_ty.bounds.push(parse_quote!(::optionable::Optionable));
-                    return;
-                }
-            }
-            // no type bound found, create a new one
-            where_clause
-                .predicates
-                .push(parse_quote!(#ident: ::optionable::Optionable));
-        }
-    });
 }
 
 #[cfg(test)]
